@@ -26,14 +26,14 @@ loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/
 loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/emergency_stop.lua'))()
 ```
 
-#### 🧹 Universal Cleaner (Stops ALL Scripts)
-```lua
-loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/universal_cleaner.lua'))()
-```
-
 #### 🎯 Smart Optimizer (Preserves Useful Scripts)
 ```lua
 loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/smart_optimizer.lua'))()
+```
+
+#### 🔧 Script Recovery (Fix Loading Issues)
+```lua
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/script_recovery.lua'))()
 ```
 
 ## 🎮 Features Overview
@@ -50,8 +50,8 @@ loadstring(game:HttpGet('https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/
 | Tool | Purpose | What It Does | Scripts Preserved |
 |------|---------|--------------|-------------------|
 | **Emergency Stop** | Fisch tools only | Stops Auto Appraiser/Reel | ❌ Stops Fisch tools |
-| **Universal Cleaner** | ALL scripts | Aggressive cleanup | ❌ Stops ALL scripts |
 | **Smart Optimizer** | Performance boost | Removes lag sources | ✅ **Keeps useful scripts** |
+| **Script Recovery** | Fix loading issues | Restores script loading | ✅ **Fixes broken loading** |
 
 ### 🎯 **Smart Optimizer Benefits:**
 - ✅ **Auto farms keep running**
@@ -69,9 +69,9 @@ After loading any optimizer:
 _G.SmartOptimize()         -- Run optimization again
 _G.CheckActiveScripts()    -- See what scripts are still running
 
--- Universal Cleaner functions  
-_G.UniversalCleanup()      -- Run full cleanup again
-_G.UniversalCleanupConfig(aggressive, verbose, forceGC)  -- Configure settings
+-- Script Recovery functions
+_G.ScriptRecovery()        -- Fix script loading issues
+_G.TestScriptLoading()     -- Test if loading works
 
 -- Emergency Stop function
 _G.EmergencyStop()         -- Run emergency stop again
@@ -80,37 +80,34 @@ _G.EmergencyStop()         -- Run emergency stop again
 ## 📊 Usage Recommendations
 
 ### 🟢 **For Regular Performance Boost:**
-1. Use **Smart Optimizer** first
+1. Use **Smart Optimizer** 
 2. Keeps your useful scripts running
 3. Only removes lag-causing connections
 
-### 🟡 **For Moderate Issues:**
-1. Try **Smart Optimizer** multiple times
-2. Check what's still running with `_G.CheckActiveScripts()`
-3. Use manual optimization functions
-
-### 🔴 **For Severe Lag/Emergency:**
-1. Use **Universal Cleaner** to stop everything
-2. Wait for game to normalize
-3. Reload your desired scripts
+### 🟡 **For Script Loading Issues:**
+1. Use **Script Recovery** tool
+2. Restores HTTP and LoadString functions
+3. Fixes broken script loading
 
 ### 🛑 **For Fisch Tools Issues:**
 1. Use **Emergency Stop** for Fisch-specific problems
-2. Less aggressive than Universal Cleaner
+2. Less aggressive cleanup
 3. Focused on fishing automation tools
 
 ## 🎮 Quick Access Through Main UI
 
-The main interface (`main.lua`) includes buttons for all tools:
+The main interface (`main.lua`) includes buttons for safe tools:
 
 - **Settings Tab → Emergency Controls**
   - 🛑 Emergency Stop
-  - 🧹 Universal Cleaner  
   - 🎯 Smart Optimizer
 
 - **Settings Tab → Performance Optimization**
   - ⚡ Quick Smart Optimize
   - 🔍 Check Active Scripts
+
+- **Settings Tab → Recovery Controls**
+  - 🔧 Fix Script Loading
 
 ## 🔄 Auto-Recovery Features
 
@@ -120,11 +117,12 @@ The main interface (`main.lua`) includes buttons for all tools:
 
 ## 💡 Pro Tips
 
-1. **Start with Smart Optimizer** - It's the gentlest and preserves your scripts
+1. **Start with Smart Optimizer** - Safe performance boost that preserves scripts
 2. **Use main UI** for easiest access to all tools
 3. **Check Active Scripts** to see what's still running after optimization
-4. **Emergency tools** are available when you need them most
-5. **All tools auto-load** from GitHub for latest updates
+4. **Script Recovery** available if loading breaks
+5. **Emergency tools** are there when you need them
+6. **All tools auto-load** from GitHub for latest updates
 
 ## 📦 Repository Structure
 
@@ -134,9 +132,9 @@ SimpleAJA/
 ├── auto_appraiser_headless.lua # 🎯 Auto appraiser (background)
 ├── auto_reel_headless.lua      # 🤫 Auto reel silent (background)
 ├── emergency_stop.lua          # 🛑 Emergency stop (Fisch tools)
-├── universal_cleaner.lua       # 🧹 Universal cleanup (ALL scripts)
 ├── smart_optimizer.lua         # 🎯 Smart optimization (preserve useful)
-└── kavo.lua                   # 🎨 UI library
+├── script_recovery.lua         # 🔧 Fix script loading issues
+└── kavo.lua                    # 🎨 UI library
 ```
 
 ---

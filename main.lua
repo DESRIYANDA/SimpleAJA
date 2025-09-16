@@ -203,14 +203,6 @@ EmergencySection:NewButton("🛑 Emergency Stop", "Stop ALL processes and clean 
     end)
 end)
 
-EmergencySection:NewButton("🧹 Universal Cleaner", "Clean ALL third-party scripts (aggressive)", function()
-    print("🧹 UNIVERSAL CLEANER INITIATED FROM UI 🧹")
-    
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/universal_cleaner.lua"))()
-    end)
-end)
-
 EmergencySection:NewButton("🎯 Smart Optimizer", "Optimize performance while keeping scripts running", function()
     print("🎯 SMART OPTIMIZER INITIATED FROM UI 🎯")
     
@@ -220,8 +212,8 @@ EmergencySection:NewButton("🎯 Smart Optimizer", "Optimize performance while k
 end)
 
 EmergencySection:NewLabel("⚠️ Emergency Stop: For Fisch Auto Tools")
-EmergencySection:NewLabel("🧹 Universal: Clean ALL scripts (stops everything)")
-EmergencySection:NewLabel("🎯 Smart: Optimize while preserving useful scripts")
+EmergencySection:NewLabel("🎯 Smart Optimizer: Safe performance boost")
+EmergencySection:NewLabel("🛡️ Universal Cleaner removed (caused crashes)")
 
 local OptimizerSection = SettingsTab:NewSection("🎯 Performance Optimization")
 
