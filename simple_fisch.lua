@@ -164,17 +164,24 @@ local function setupAutoCastListeners()
             task.wait(flags.autocastdelay or 1) -- Use configurable delay
             
             if flags.autocastmode == "Legit" then
-                -- Legit Mode: With random power support
+                -- Legit Mode: Exactly like king.lua but with random power support
                 local targetPower = getTargetPower() -- Get random or full power
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                 gethrp().ChildAdded:Connect(function()
                     if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
                         gethrp().power.powerbar.bar.Changed:Connect(function(property)
                             if property == "Size" then
-                                local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
-                                -- Release when power reaches target percentage
-                                if currentPower >= targetPower then
-                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                if flags.legitrandompower then
+                                    -- Random power mode - use target percentage
+                                    local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
+                                    if currentPower >= targetPower then
+                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    end
+                                else
+                                    -- Full power mode - exactly like king.lua
+                                    if gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
+                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    end
                                 end
                             end
                         end)
@@ -199,17 +206,24 @@ local function setupAutoCastListeners()
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode: With random power support
+                    -- Legit Mode: Exactly like king.lua but with random power support
                     local targetPower = getTargetPower() -- Get random or full power
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                     gethrp().ChildAdded:Connect(function()
                         if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
                             gethrp().power.powerbar.bar.Changed:Connect(function(property)
                                 if property == "Size" then
-                                    local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
-                                    -- Release when power reaches target percentage
-                                    if currentPower >= targetPower then
-                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    if flags.legitrandompower then
+                                        -- Random power mode - use target percentage
+                                        local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
+                                        if currentPower >= targetPower then
+                                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                        end
+                                    else
+                                        -- Full power mode - exactly like king.lua
+                                        if gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
+                                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                        end
                                     end
                                 end
                             end)
