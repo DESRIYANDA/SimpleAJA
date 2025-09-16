@@ -139,22 +139,22 @@ local function testPerfect()
 end
 
 local function testNatural()
-    local rate = math.random(85, 95) -- Increased success rate
-    local delay = math.random(50, 150) / 100 -- Reduced delay (0.5-1.5s)
-    print("🌿 NATURAL TEST: " .. rate .. "% rate, " .. delay .. "s delay")
-    statusLabel.Text = "⏱️ Natural test: " .. rate .. "% in " .. delay .. "s"
-    task.wait(delay)
+    local rate = math.random(85, 95)
+    print("🌿 NATURAL TEST: " .. rate .. "% rate")
+    statusLabel.Text = "🌿 Natural test: " .. rate .. "%"
+    statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    -- Use same direct method as testPerfect (no delay, no task.spawn)
     ReplicatedStorage.events.reelfinished:FireServer(rate, true)
     pcall(function() lp.PlayerGui.reel.Enabled = false end)
     statusLabel.Text = "✅ Natural test completed!"
 end
 
 local function testRealistic()
-    local rate = math.random(80, 90) -- Increased success rate
-    local delay = math.random(100, 200) / 100 -- Reduced delay (1-2s)
-    print("👤 REALISTIC TEST: " .. rate .. "% rate, " .. delay .. "s delay")
-    statusLabel.Text = "⏱️ Realistic test: " .. rate .. "% in " .. delay .. "s"
-    task.wait(delay)
+    local rate = math.random(80, 90)
+    print("👤 REALISTIC TEST: " .. rate .. "% rate")
+    statusLabel.Text = "👤 Realistic test: " .. rate .. "%"
+    statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    -- Use same direct method as testPerfect (no delay, no task.spawn)
     ReplicatedStorage.events.reelfinished:FireServer(rate, true)
     pcall(function() lp.PlayerGui.reel.Enabled = false end)
     statusLabel.Text = "✅ Realistic test completed!"
@@ -211,8 +211,8 @@ end
 
 -- Create test buttons
 createTestButton("Perfect 100%", "Instant 100% completion", 1, testPerfect)
-createTestButton("Natural 70-90%", "Natural timing & rate", 2, function() task.spawn(testNatural) end)
-createTestButton("Realistic 60-85%", "Human-like behavior", 3, function() task.spawn(testRealistic) end)
+createTestButton("Natural 85-95%", "Same method as Perfect", 2, testNatural)
+createTestButton("Realistic 80-90%", "Same method as Perfect", 3, testRealistic)
 createTestButton("Risky 40-70%", "Low rate, random timing", 4, function() task.spawn(testRisky) end)
 createTestButton("Instant 80-95%", "No delay, high rate", 5, testInstant)
 createTestButton("Delayed 3s", "Fixed 3 second delay", 6, function() task.spawn(testDelayed) end)

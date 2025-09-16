@@ -107,44 +107,35 @@ local function testInstant()
 end
 
 local function testNatural()
-    local rate = math.random(85, 95) -- Increased from 70-90 to 85-95
-    local delay = math.random(50, 150) / 100 -- Reduced from 150-250 to 50-150 (0.5-1.5s)
-    status.Text = "🌿 Natural " .. rate .. "% (" .. delay .. "s)"
+    local rate = math.random(85, 95)
+    status.Text = "🌿 Natural " .. rate .. "%"
     status.TextColor3 = Color3.fromRGB(100, 255, 100)
-    task.spawn(function()
-        task.wait(delay)
-        ReplicatedStorage.events.reelfinished:FireServer(rate, true)
-        pcall(function() lp.PlayerGui.reel.Enabled = false end)
-    end)
+    -- Use same direct method as testInstant (no task.spawn, no delay)
+    ReplicatedStorage.events.reelfinished:FireServer(rate, true)
+    pcall(function() lp.PlayerGui.reel.Enabled = false end)
 end
 
 local function testRealistic()
-    local rate = math.random(80, 90) -- Increased from 60-80 to 80-90
-    local delay = math.random(100, 200) / 100 -- Reduced from 200-400 to 100-200 (1-2s)
-    status.Text = "👤 Realistic " .. rate .. "% (" .. delay .. "s)"
+    local rate = math.random(80, 90)
+    status.Text = "👤 Realistic " .. rate .. "%"
     status.TextColor3 = Color3.fromRGB(100, 255, 100)
-    task.spawn(function()
-        task.wait(delay)
-        ReplicatedStorage.events.reelfinished:FireServer(rate, true)
-        pcall(function() lp.PlayerGui.reel.Enabled = false end)
-    end)
+    -- Use same direct method as testInstant (no task.spawn, no delay)
+    ReplicatedStorage.events.reelfinished:FireServer(rate, true)
+    pcall(function() lp.PlayerGui.reel.Enabled = false end)
 end
 
 local function testRandom()
     local rate = math.random(40, 95)
-    local delay = math.random(50, 400) / 100
     local caught = math.random() > 0.15
-    status.Text = "🎲 Random " .. rate .. "% (" .. delay .. "s)"
+    status.Text = "🎲 Random " .. rate .. "%"
     status.TextColor3 = Color3.fromRGB(100, 255, 100)
-    task.spawn(function()
-        task.wait(delay)
-        ReplicatedStorage.events.reelfinished:FireServer(rate, caught)
-        pcall(function() lp.PlayerGui.reel.Enabled = false end)
-        if not caught then
-            status.Text = "❌ Fish escaped!"
-            status.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-    end)
+    -- Use same direct method as testInstant (no task.spawn, no delay)
+    ReplicatedStorage.events.reelfinished:FireServer(rate, caught)
+    pcall(function() lp.PlayerGui.reel.Enabled = false end)
+    if not caught then
+        status.Text = "❌ Fish escaped!"
+        status.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
 end
 
 local function forceComplete()
