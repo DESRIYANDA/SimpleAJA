@@ -131,19 +131,39 @@ local function setupAutoCastListeners()
             task.wait(flags.autocastdelay or 1) -- Use configurable delay
             
             if flags.autocastmode == "Legit" then
-                -- Legit Mode: Simulate real player behavior (like king.lua)
+                -- Legit Mode: Faster power bar detection with timeout
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                gethrp().ChildAdded:Connect(function()
-                    if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
-                        gethrp().power.powerbar.bar.Changed:Connect(function(property)
+                
+                local powerBarDetected = false
+                local connection
+                connection = gethrp().ChildAdded:Connect(function()
+                    if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar and not powerBarDetected then
+                        powerBarDetected = true
+                        local sizeConnection
+                        sizeConnection = gethrp().power.powerbar.bar.Changed:Connect(function(property)
                             if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
                                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                sizeConnection:Disconnect()
+                                connection:Disconnect()
                             end
                         end)
                     end
                 end)
+                
+                -- Faster timeout - release mouse after 2 seconds if no power bar
+                task.spawn(function()
+                    task.wait(2)
+                    if not powerBarDetected then
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                        connection:Disconnect()
+                    end
+                end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Instant bobber very close to character (negative distance)
+                -- Rage Mode: Hold mouse briefly then instant cast
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                task.wait(0.5) -- Hold mouse for 0.5 seconds
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                task.wait(0.1) -- Small delay before cast
                 child.events.cast:FireServer(100, flags.ragebobberDistance or -250)
             end
         end
@@ -157,19 +177,39 @@ local function setupAutoCastListeners()
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode (like king.lua)
+                    -- Legit Mode: Faster power bar detection with timeout
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                    gethrp().ChildAdded:Connect(function()
-                        if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
-                            gethrp().power.powerbar.bar.Changed:Connect(function(property)
+                    
+                    local powerBarDetected = false
+                    local connection
+                    connection = gethrp().ChildAdded:Connect(function()
+                        if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar and not powerBarDetected then
+                            powerBarDetected = true
+                            local sizeConnection
+                            sizeConnection = gethrp().power.powerbar.bar.Changed:Connect(function(property)
                                 if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
                                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    sizeConnection:Disconnect()
+                                    connection:Disconnect()
                                 end
                             end)
                         end
                     end)
+                    
+                    -- Faster timeout - release mouse after 2 seconds if no power bar
+                    task.spawn(function()
+                        task.wait(2)
+                        if not powerBarDetected then
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                            connection:Disconnect()
+                        end
+                    end)
                 elseif flags.autocastmode == "Rage" then
-                    -- Rage Mode: Instant bobber very close to character (negative distance)
+                    -- Rage Mode: Hold mouse briefly then instant cast
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                    task.wait(0.5) -- Hold mouse for 0.5 seconds
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                    task.wait(0.1) -- Small delay before cast
                     tool.events.cast:FireServer(100, flags.ragebobberDistance or -250)
                 end
             end
@@ -216,15 +256,19 @@ RunService.Heartbeat:Connect(function()
                         end
                     end)
                     
-                    -- Failsafe: Auto release after 5 seconds if power bar not found
-                    task.wait(5)
+                    -- Faster timeout: Auto release after 2 seconds if power bar not found
+                    task.wait(2)
                     if not powerBarFound then
                         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
                         connection:Disconnect()
                     end
                 end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Instant bobber very close to character (negative distance)
+                -- Rage Mode: Hold mouse briefly then instant cast
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                task.wait(0.5) -- Hold mouse for 0.5 seconds
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                task.wait(0.1) -- Small delay before cast
                 rod.events.cast:FireServer(100, flags.ragebobberDistance or -250)
             end
         end
