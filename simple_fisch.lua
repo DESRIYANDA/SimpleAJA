@@ -84,13 +84,6 @@ getHoldDuration = function()
     local randomHold = minHold + (math.random() * (maxHold - minHold))
     return randomHold
 end
-        
-        local randomPower = math.random(minPower, maxPower)
-        return randomPower / 100 -- Convert to decimal (0.7 = 70%)
-    else
-        return 1.0 -- Full power (100%)
-    end
-end
 
 --// Load Kavo UI Library from GitHub
 local Kavo
