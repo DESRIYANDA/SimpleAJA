@@ -259,6 +259,20 @@ OptimizerSection:NewLabel("🔍 Check scripts: See what's currently running")
 
 local RecoverySection = SettingsTab:NewSection("🔄 Recovery Controls")
 
+RecoverySection:NewButton("🔧 Fix Script Loading", "Restore script loading after Universal Cleaner", function()
+    print("🔧 SCRIPT LOADING RECOVERY INITIATED 🔧")
+    
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/script_recovery.lua"))()
+    end)
+    
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "🔧 Script Recovery";
+        Text = "Attempting to restore script loading...";
+        Duration = 3;
+    })
+end)
+
 RecoverySection:NewButton("🔄 Smart Recovery", "Detect and fix script issues automatically", function()
     print("🔄 SMART RECOVERY INITIATED 🔄")
     
