@@ -40,7 +40,7 @@ local function checkAlwaysCatchV2Logic()
     if reelGui then
         debugPrint("GUI Parent: " .. tostring(reelGui.Parent ~= nil))
         debugPrint("GUI Enabled: " .. tostring(reelGui.Enabled))
-        debugPrint("GUI Visible: " .. tostring(reelGui.Visible))
+        -- Remove .Visible check since ScreenGui doesn't have Visible property
         debugPrint("-> Always Catch v2 SHOULD trigger (GUI detected)")
     elseif rod and rod:FindFirstChild('values') and rod.values:FindFirstChild('lure') and rod.values.lure.Value == 100 then
         debugPrint("Rod exists with lure value 100")
