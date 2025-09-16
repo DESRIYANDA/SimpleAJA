@@ -1,1 +1,1 @@
-# SimpleAJA
+# simpleaja
