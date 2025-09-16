@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
 print("🔍 FISHING DEBUG TOOL STARTED")
-print("=" * 50)
+print("==================================================")
 
 -- Debug Functions
 local function debugPrint(message)
