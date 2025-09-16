@@ -87,6 +87,10 @@ mainSection:NewToggle("Super Instant Reel", "Skip reel animation and instantly c
     flags.superinstantreel = state
 end)
 
+mainSection:NewToggle("Rod Front Position", "Keep rod in front when casting instead of behind", function(state)
+    flags.rodfrontposition = state
+end)
+
 --// Main Logic Loops
 local lastShakeTime = 0
 local shakeDebounce = false
@@ -198,6 +202,86 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
+    -- Rod Front Position
+    if flags.rodfrontposition then
+        local character = getchar()
+        local humanoid = gethum()
+        
+        -- Adjust rod position for front casting
+        local rod = FindRod()
+        if rod and rod.Parent == character then
+            -- Modify rod grip and position
+            pcall(function()
+                local rightArm = character:FindFirstChild("Right Arm")
+                local leftArm = character:FindFirstChild("Left Arm")
+                
+                if rightArm then
+                    local rightGrip = rightArm:FindFirstChild("RightGrip")
+                    if rightGrip then
+                        -- Adjust the rod orientation for front position
+                        rightGrip.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-30), math.rad(15), math.rad(0))
+                        rightGrip.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(0))
+                    end
+                end
+                
+                -- Adjust left arm for better rod handling
+                if leftArm then
+                    local leftGrip = leftArm:FindFirstChild("LeftGrip")
+                    if leftGrip then
+                        leftGrip.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-20), math.rad(-10), math.rad(0))
+                    end
+                end
+                
+                -- Also adjust rod handle position if available
+                if rod:FindFirstChild("Handle") then
+                    local handle = rod.Handle
+                    -- Store original position if not stored
+                    if not handle:GetAttribute("OriginalCFrame") then
+                        handle:SetAttribute("OriginalCFrame", tostring(handle.CFrame))
+                    end
+                    
+                    -- Ensure rod points forward during idle
+                    if handle.AssemblyLinearVelocity.Magnitude < 1 then
+                        local character_root = character:FindFirstChild("HumanoidRootPart")
+                        if character_root then
+                            local forward_position = character_root.CFrame.Position + character_root.CFrame.LookVector * 2
+                            local look_at_cframe = CFrame.lookAt(handle.Position, forward_position)
+                            handle.CFrame = look_at_cframe * CFrame.Angles(math.rad(-15), 0, 0)
+                        end
+                    end
+                end
+                
+                -- Adjust character stance for better casting
+                if humanoid and humanoid.RootPart then
+                    local rootPart = humanoid.RootPart
+                    -- Ensure character maintains good casting posture
+                    local humanoidDesc = humanoid:FindFirstChild("HumanoidDescription")
+                    if humanoidDesc then
+                        -- Adjust character animations for better rod positioning
+                        humanoid:LoadAnimation(humanoid:FindFirstChild("Animate"))
+                    end
+                end
+            end)
+        end
+        
+        -- Modify body rod model if exists
+        local bodyRod = character:FindFirstChild("RodBodyModel")
+        if bodyRod then
+            pcall(function()
+                if bodyRod:FindFirstChild("Handle") then
+                    local handle = bodyRod.Handle
+                    local character_root = character:FindFirstChild("HumanoidRootPart")
+                    if character_root then
+                        -- Position body rod to point forward
+                        local forward_direction = character_root.CFrame.LookVector
+                        local rod_position = character_root.Position + forward_direction * 1.5
+                        handle.CFrame = CFrame.lookAt(rod_position, rod_position + forward_direction)
+                    end
+                end
+            end)
+        end
+    end
+    
     -- Auto Cast
     if flags.autocast then
         local rod = FindRod()
@@ -248,6 +332,26 @@ if CheckFunc(hookmetamethod) then
         -- Perfect Cast Hook
         if method == 'FireServer' and self.Name == 'cast' and flags.perfectcast then
             args[1] = 100
+            return old(self, unpack(args))
+        -- Rod Front Position Cast Hook
+        elseif method == 'FireServer' and self.Name == 'cast' and flags.rodfrontposition then
+            -- Ensure casting direction is forward
+            args[1] = args[1] or 100 -- Power
+            args[2] = 1 -- Direction (1 = forward, -1 = backward)
+            
+            -- Modify casting to ensure forward direction
+            task.spawn(function()
+                local character = getchar()
+                local humanoid = gethum()
+                if humanoid and humanoid.RootPart then
+                    local rootPart = humanoid.RootPart
+                    local lookDirection = rootPart.CFrame.LookVector
+                    
+                    -- Ensure character faces forward during cast
+                    rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + lookDirection)
+                end
+            end)
+            
             return old(self, unpack(args))
         -- Always Catch Hook
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatch then
