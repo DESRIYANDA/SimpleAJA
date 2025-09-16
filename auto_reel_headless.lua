@@ -9,6 +9,27 @@ local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 local LocalPlayer = Players.LocalPlayer
 
+-- Helper functions from ori.lua
+local function getchar()
+    return LocalPlayer.Character
+end
+
+local function FindChild(parent, name)
+    return parent:FindFirstChild(name)
+end
+
+local function FindChildOfClass(parent, class)
+    return parent:FindFirstChildOfClass(class)
+end
+
+local function FindRod()
+    if FindChildOfClass(getchar(), 'Tool') and FindChild(FindChildOfClass(getchar(), 'Tool'), 'values') then
+        return FindChildOfClass(getchar(), 'Tool')
+    else
+        return nil
+    end
+end
+
 -- GUI Change Detection for instant response (FIXED)
 local function setupGUIListener()
     local playerGui = LocalPlayer.PlayerGui
@@ -91,13 +112,19 @@ local function handleAutoShake(shakeui)
     end
     
     if button and button:IsA("GuiButton") then
-        -- Use VirtualInputManager like ori.lua
+        -- Use VirtualInputManager like ori.lua - Method 1: Mouse Events
         local VirtualInputManager = game:GetService("VirtualInputManager")
         local center = button.AbsolutePosition + (button.AbsoluteSize / 2)
         
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, button, 1)
             VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, button, 1)
+        end)
+        
+        -- Method 2: Key Events (like ori.lua)
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
         end)
         
         print("🎣 AutoShake activated")
@@ -108,6 +135,14 @@ end
 local function handleInstantReel()
     if not isRunning or not settings.instantReel then return end
     
+    -- Check if we have a rod first (like ori.lua)
+    local rod = FindRod()
+    if not rod then return end
+    
+    -- Check lure value like ori.lua
+    local lureValue = rod.values and rod.values.lure and rod.values.lure.Value or 0
+    if lureValue < 100 then return end -- Only reel when lure is 100%
+    
     -- Use the same method as ori.lua
     pcall(function()
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -116,7 +151,7 @@ local function handleInstantReel()
             local reelfinished = events:FindFirstChild("reelfinished")
             if reelfinished then
                 reelfinished:FireServer(100, true)
-                print("⚡ Instant reel activated")
+                print("⚡ Instant reel activated (lure: " .. lureValue .. "%)")
                 
                 -- Clean up reel GUI like ori.lua
                 local playerGui = LocalPlayer.PlayerGui
