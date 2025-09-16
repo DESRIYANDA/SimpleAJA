@@ -164,6 +164,7 @@ local function handleSuperInstantReel()
     
     -- SMOOTH TRIGGER: Lure >= 98% OR bite detected (like ori.lua)
     if lureValue >= 98 or biteValue == true then
+        print("🚀 [Debug] Super Instant Reel conditions met! Lure: " .. lureValue .. "%, Bite: " .. tostring(biteValue))
         pcall(function()
             local ReplicatedStorage = game:GetService("ReplicatedStorage")
             local events = ReplicatedStorage:FindFirstChild("events")
@@ -201,7 +202,11 @@ local function handleSuperInstantReel()
                             end)
                         end
                     end)
+                else
+                    print("❌ [Debug] reelfinished event not found")
                 end
+            else
+                print("❌ [Debug] ReplicatedStorage.events not found")
             end
         end)
     end
@@ -376,6 +381,23 @@ local function checkForActiveGUIs()
     
     -- CONTINUOUS INSTANT REEL CHECK (like ori.lua)
     if settings.instantReel then
+        -- Debug: Check if we have a rod
+        local rod = FindRod()
+        if rod then
+            local lureValue = rod.values and rod.values.lure and rod.values.lure.Value or 0
+            local biteValue = rod.values and rod.values.bite and rod.values.bite.Value or false
+            
+            -- Debug every 60 frames (1 second at 60 FPS)
+            if math.random(1, 60) == 1 then
+                print("🎣 [Debug] Rod found - Lure: " .. lureValue .. "%, Bite: " .. tostring(biteValue))
+            end
+        else
+            -- Debug every 120 frames (2 seconds at 60 FPS)  
+            if math.random(1, 120) == 1 then
+                print("❌ [Debug] No rod found")
+            end
+        end
+        
         -- Method 1: Super Instant Reel (lure >= 98% OR bite detected)
         handleSuperInstantReel()
         
