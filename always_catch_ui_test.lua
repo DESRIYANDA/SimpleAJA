@@ -139,8 +139,8 @@ local function testPerfect()
 end
 
 local function testNatural()
-    local rate = math.random(70, 90)
-    local delay = math.random(150, 300) / 100
+    local rate = math.random(85, 95) -- Increased success rate
+    local delay = math.random(50, 150) / 100 -- Reduced delay (0.5-1.5s)
     print("🌿 NATURAL TEST: " .. rate .. "% rate, " .. delay .. "s delay")
     statusLabel.Text = "⏱️ Natural test: " .. rate .. "% in " .. delay .. "s"
     task.wait(delay)
@@ -150,8 +150,8 @@ local function testNatural()
 end
 
 local function testRealistic()
-    local rate = math.random(60, 85)
-    local delay = math.random(200, 400) / 100
+    local rate = math.random(80, 90) -- Increased success rate
+    local delay = math.random(100, 200) / 100 -- Reduced delay (1-2s)
     print("👤 REALISTIC TEST: " .. rate .. "% rate, " .. delay .. "s delay")
     statusLabel.Text = "⏱️ Realistic test: " .. rate .. "% in " .. delay .. "s"
     task.wait(delay)

@@ -107,8 +107,8 @@ local function testInstant()
 end
 
 local function testNatural()
-    local rate = math.random(70, 90)
-    local delay = math.random(150, 250) / 100
+    local rate = math.random(85, 95) -- Increased from 70-90 to 85-95
+    local delay = math.random(50, 150) / 100 -- Reduced from 150-250 to 50-150 (0.5-1.5s)
     status.Text = "🌿 Natural " .. rate .. "% (" .. delay .. "s)"
     status.TextColor3 = Color3.fromRGB(100, 255, 100)
     task.spawn(function()
@@ -119,8 +119,8 @@ local function testNatural()
 end
 
 local function testRealistic()
-    local rate = math.random(60, 80)
-    local delay = math.random(200, 400) / 100
+    local rate = math.random(80, 90) -- Increased from 60-80 to 80-90
+    local delay = math.random(100, 200) / 100 -- Reduced from 200-400 to 100-200 (1-2s)
     status.Text = "👤 Realistic " .. rate .. "% (" .. delay .. "s)"
     status.TextColor3 = Color3.fromRGB(100, 255, 100)
     task.spawn(function()

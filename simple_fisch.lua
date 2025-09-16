@@ -263,8 +263,8 @@ lp.PlayerGui.ChildAdded:Connect(function(gui)
         print("[ALWAYS CATCH V2] REEL GUI DETECTED! Starting auto-completion...")
         
         task.spawn(function()
-            local minigameDuration = math.random(200, 400) / 100 -- 2-4 seconds
-            local completionRate = math.random(65, 88) -- Natural success rate
+            local minigameDuration = math.random(50, 150) / 100 -- Reduced from 200-400 to 50-150 (0.5-1.5s)
+            local completionRate = math.random(85, 95) -- Increased from 65-88 to 85-95
             
             print("[ALWAYS CATCH V2] Waiting " .. minigameDuration .. " seconds for natural timing...")
             task.wait(minigameDuration)
