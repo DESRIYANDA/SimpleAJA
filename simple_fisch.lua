@@ -217,13 +217,13 @@ local function setupAutoCastListeners()
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode: With random power and hold duration
+                    -- Legit Mode: With random power and hold duration (same as Connection 1)
                     local holdDuration = getHoldDuration() -- Get random hold duration
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                     task.wait(holdDuration) -- Wait for random duration
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
                 elseif flags.autocastmode == "Rage" then
-                    -- Rage Mode: Hold mouse briefly then instant cast
+                    -- Rage Mode: Must click mouse first, then instant cast (same as Connection 1)
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                     task.wait(0.5) -- Hold mouse for 0.5 seconds  
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
