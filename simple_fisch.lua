@@ -10,7 +10,7 @@ local flags = {}
 local lp = Players.LocalPlayer
 flags.autocastmode = "Legit" -- Default mode
 flags.autocastdelay = 1 -- Default delay in seconds
-flags.ragebobberDistance = 0.1 -- Default close distance for instant bobber
+flags.ragebobberDistance = -250 -- Default close distance for instant bobber (negative = close to character)
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -79,16 +79,12 @@ mainSection:NewSlider("Auto Cast Delay", "Delay before auto casting (seconds)", 
     flags.autocastdelay = value
 end)
 
-mainSection:NewSlider("Rage Bobber Distance", "Distance for Rage mode bobber (0.1 = closest)", 2, 0.1, function(value)
+mainSection:NewSlider("Rage Bobber Distance", "Distance for Rage mode bobber (-500 = very close)", 2, -500, function(value)
     flags.ragebobberDistance = value
 end)
 
 mainSection:NewToggle("Auto Shake", "Automatically shake when fish bites", function(state)
     flags.autoshake = state
-    -- Re-setup shake listener when toggled
-    if state then
-        task.spawn(setupShakeListener)
-    end
 end)
 
 mainSection:NewToggle("Auto Reel", "Automatically reel in your catch", function(state)
@@ -109,77 +105,21 @@ end)
 
 --// Main Logic Loops
 local lastShakeTime = 0
-local shakeConnection
 
--- Enhanced Auto Shake System (Fixed and Faster)
-local function setupShakeListener()
-    -- Clean up existing connection
-    if shakeConnection then
-        shakeConnection:Disconnect()
-    end
-    
-    -- Monitor PlayerGui for shake UI
-    shakeConnection = lp.PlayerGui.ChildAdded:Connect(function(gui)
-        if gui.Name == "shakeui" and flags.autoshake then
-            -- Wait for safezone to be added
-            gui.ChildAdded:Connect(function(child)
-                if child.Name == "safezone" then
-                    -- Wait for button to be added
-                    child.ChildAdded:Connect(function(button)
-                        if button.Name == "button" and button:IsA("ImageButton") then
-                            -- Instant shake response
-                            task.spawn(function()
-                                local attempts = 0
-                                while button.Parent and flags.autoshake and attempts < 10 do
-                                    attempts = attempts + 1
-                                    
-                                    -- Multiple methods for maximum reliability
-                                    pcall(function()
-                                        -- Method 1: Mouse click at button center
-                                        local pos = button.AbsolutePosition
-                                        local size = button.AbsoluteSize
-                                        VirtualInputManager:SendMouseButtonEvent(
-                                            pos.X + size.X / 2, 
-                                            pos.Y + size.Y / 2, 
-                                            0, true, lp, 0
-                                        )
-                                        VirtualInputManager:SendMouseButtonEvent(
-                                            pos.X + size.X / 2, 
-                                            pos.Y + size.Y / 2, 
-                                            0, false, lp, 0
-                                        )
-                                    end)
-                                    
-                                    pcall(function()
-                                        -- Method 2: GuiService selection + Enter key
-                                        GuiService.SelectedObject = button
-                                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-                                    end)
-                                    
-                                    pcall(function()
-                                        -- Method 3: Direct button activation
-                                        button.Activated:Fire()
-                                    end)
-                                    
-                                    task.wait(0.001) -- Very fast attempts
-                                    
-                                    -- Check if shake UI is gone (success)
-                                    if not button.Parent or not lp.PlayerGui:FindFirstChild("shakeui") then
-                                        break
-                                    end
-                                end
-                            end)
-                        end
-                    end)
-                end
-            end)
+-- Auto Shake (Simple implementation like coba.lua)
+RunService.Heartbeat:Connect(function()
+    if flags.autoshake then
+        if lp.PlayerGui:FindFirstChild('shakeui') and 
+           lp.PlayerGui.shakeui:FindFirstChild('safezone') and 
+           lp.PlayerGui.shakeui.safezone:FindFirstChild('button') then
+            GuiService.SelectedObject = lp.PlayerGui.shakeui.safezone.button
+            if GuiService.SelectedObject == lp.PlayerGui.shakeui.safezone.button then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+            end
         end
-    end)
-end
-
--- Setup the enhanced shake listener
-task.spawn(setupShakeListener)
+    end
+end)
 
 -- Enhanced AutoCast Event Listeners
 local autoCastConnection1, autoCastConnection2
@@ -203,8 +143,8 @@ local function setupAutoCastListeners()
                     end
                 end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Instant bobber with configurable distance
-                child.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
+                -- Rage Mode: Instant bobber very close to character (negative distance)
+                child.events.cast:FireServer(100, flags.ragebobberDistance or -250)
             end
         end
     end)
@@ -229,8 +169,8 @@ local function setupAutoCastListeners()
                         end
                     end)
                 elseif flags.autocastmode == "Rage" then
-                    -- Rage Mode: Instant bobber with configurable distance
-                    tool.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
+                    -- Rage Mode: Instant bobber very close to character (negative distance)
+                    tool.events.cast:FireServer(100, flags.ragebobberDistance or -250)
                 end
             end
         end
@@ -284,8 +224,8 @@ RunService.Heartbeat:Connect(function()
                     end
                 end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Instant bobber with configurable distance
-                rod.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
+                -- Rage Mode: Instant bobber very close to character (negative distance)
+                rod.events.cast:FireServer(100, flags.ragebobberDistance or -250)
             end
         end
     end
