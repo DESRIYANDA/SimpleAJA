@@ -287,9 +287,14 @@ if CheckFunc(hookmetamethod) then
             args[1] = 100
             args[2] = true
             return old(self, unpack(args))
-        -- Always Catch v2 Hook (only true argument)
+        -- Always Catch v2 Hook (improved version)
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatchv2 then
-            args[2] = true
+            -- Keep original success rate but force caught = true
+            -- Also ensure minimum 50% success rate to avoid total failures
+            if args[1] and args[1] < 50 then
+                args[1] = math.random(50, 85) -- Random success rate between 50-85%
+            end
+            args[2] = true -- Force caught = true
             return old(self, unpack(args))
         -- Super Instant Reel Hook
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.superinstantreel then
