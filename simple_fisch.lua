@@ -1,6 +1,36 @@
 --// Services
-local Players = cloneref(game:GetService('Players'))
-local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
+local Players = cloneref(game:GetService-- Function to get target power percentage for Legit mode
+getTargetPower = function()
+    if flags.legitrandompower then
+        local minPower = math.max(50, flags.legitpowermin or 70) -- Minimum 50%
+        local maxPower = math.min(100, flags.legitpowermax or 100) -- Maximum 100%
+        
+        -- Ensure min is not greater than max
+        if minPower > maxPower then
+            minPower, maxPower = maxPower, minPower
+        end
+        
+        local randomPower = math.random(minPower, maxPower)
+        return randomPower / 100 -- Convert to decimal (0.7 = 70%)
+    else
+        return 1.0 -- Full power (100%)
+    end
+end
+
+-- Function to get random hold duration for Legit mode
+getHoldDuration = function()
+    local minHold = math.max(0.1, flags.legitholdmin or 0.3) -- Minimum 0.1 seconds
+    local maxHold = math.min(3.0, flags.legitholdmax or 1.2) -- Maximum 3.0 seconds
+    
+    -- Ensure min is not greater than max
+    if minHold > maxHold then
+        minHold, maxHold = maxHold, minHold
+    end
+    
+    -- Generate random float between min and max
+    local randomHold = minHold + (math.random() * (maxHold - minHold))
+    return randomHold
+endl ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -14,6 +44,8 @@ flags.ragebobberDistance = -250 -- Default close distance for instant bobber (ne
 flags.legitrandompower = false -- Random power bar for Legit mode
 flags.legitpowermin = 70 -- Minimum power percentage (70-100%)
 flags.legitpowermax = 100 -- Maximum power percentage
+flags.legitholdmin = 0.3 -- Minimum hold duration in seconds
+flags.legitholdmax = 1.2 -- Maximum hold duration in seconds
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -116,6 +148,14 @@ mainSection:NewSlider("Legit Max Power %", "Maximum power percentage for random 
     flags.legitpowermax = value
 end)
 
+mainSection:NewSlider("Legit Hold Min (s)", "Minimum hold duration in seconds", 30, 1, function(value)
+    flags.legitholdmin = value / 10 -- Convert to decimal (30 = 3.0 seconds)
+end)
+
+mainSection:NewSlider("Legit Hold Max (s)", "Maximum hold duration in seconds", 30, 3, function(value)
+    flags.legitholdmax = value / 10 -- Convert to decimal (30 = 3.0 seconds)
+end)
+
 mainSection:NewToggle("Auto Shake", "Automatically shake when fish bites", function(state)
     flags.autoshake = state
 end)
@@ -164,29 +204,11 @@ local function setupAutoCastListeners()
             task.wait(flags.autocastdelay or 1) -- Use configurable delay
             
             if flags.autocastmode == "Legit" then
-                -- Legit Mode: Exactly like king.lua but with random power support
-                local targetPower = getTargetPower() -- Get random or full power
+                -- Legit Mode: With random power and hold duration
+                local holdDuration = getHoldDuration() -- Get random hold duration
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                gethrp().ChildAdded:Connect(function()
-                    if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
-                        gethrp().power.powerbar.bar.Changed:Connect(function(property)
-                            if property == "Size" then
-                                if flags.legitrandompower then
-                                    -- Random power mode - use target percentage
-                                    local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
-                                    if currentPower >= targetPower then
-                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                    end
-                                else
-                                    -- Full power mode - exactly like king.lua
-                                    if gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
-                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                    end
-                                end
-                            end
-                        end)
-                    end
-                end)
+                task.wait(holdDuration) -- Wait for random duration
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
             elseif flags.autocastmode == "Rage" then
                 -- Rage Mode: Hold mouse briefly then instant cast
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
@@ -206,29 +228,11 @@ local function setupAutoCastListeners()
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode: Exactly like king.lua but with random power support
-                    local targetPower = getTargetPower() -- Get random or full power
+                    -- Legit Mode: With random power and hold duration
+                    local holdDuration = getHoldDuration() -- Get random hold duration
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                    gethrp().ChildAdded:Connect(function()
-                        if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
-                            gethrp().power.powerbar.bar.Changed:Connect(function(property)
-                                if property == "Size" then
-                                    if flags.legitrandompower then
-                                        -- Random power mode - use target percentage
-                                        local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
-                                        if currentPower >= targetPower then
-                                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                        end
-                                    else
-                                        -- Full power mode - exactly like king.lua
-                                        if gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
-                                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                        end
-                                    end
-                                end
-                            end)
-                        end
-                    end)
+                    task.wait(holdDuration) -- Wait for random duration
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
                 elseif flags.autocastmode == "Rage" then
                     -- Rage Mode: Hold mouse briefly then instant cast
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
