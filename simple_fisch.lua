@@ -10,6 +10,7 @@ local flags = {}
 local lp = Players.LocalPlayer
 flags.autocastmode = "Legit" -- Default mode
 flags.autocastdelay = 1 -- Default delay in seconds
+flags.ragebobberDistance = 0.1 -- Default close distance for instant bobber
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -78,8 +79,16 @@ mainSection:NewSlider("Auto Cast Delay", "Delay before auto casting (seconds)", 
     flags.autocastdelay = value
 end)
 
+mainSection:NewSlider("Rage Bobber Distance", "Distance for Rage mode bobber (0.1 = closest)", 2, 0.1, function(value)
+    flags.ragebobberDistance = value
+end)
+
 mainSection:NewToggle("Auto Shake", "Automatically shake when fish bites", function(state)
     flags.autoshake = state
+    -- Re-setup shake listener when toggled
+    if state then
+        task.spawn(setupShakeListener)
+    end
 end)
 
 mainSection:NewToggle("Auto Reel", "Automatically reel in your catch", function(state)
@@ -100,61 +109,73 @@ end)
 
 --// Main Logic Loops
 local lastShakeTime = 0
-local shakeDebounce = false
+local shakeConnection
 
--- Enhanced Auto Shake Event Listener (Faster Response)
+-- Enhanced Auto Shake System (Fixed and Faster)
 local function setupShakeListener()
-    if flags.autoshake then
-        local playerGui = lp.PlayerGui
-        
-        -- Monitor for shake UI appearance
-        local function onShakeUIAdded()
-            if FindChild(playerGui, 'shakeui') then
-                local shakeUI = playerGui.shakeui
-                if FindChild(shakeUI, 'safezone') and FindChild(shakeUI.safezone, 'button') then
-                    local shakeButton = shakeUI.safezone.button
-                    
-                    -- Instant response when shake UI appears
-                    task.spawn(function()
-                        -- Wait for button to be fully loaded
-                        task.wait(0.01)
-                        
-                        -- Triple activation for maximum speed and reliability
-                        for attempt = 1, 5 do
-                            pcall(function()
-                                -- Method 1: Virtual Key Press
-                                GuiService.SelectedObject = shakeButton
-                                game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                                game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-                                
-                                -- Method 2: Direct Fire
-                                shakeButton.Activated:Fire()
-                                
-                                -- Method 3: Mouse Click Simulation
-                                local VirtualInputManager = game:GetService('VirtualInputManager')
-                                local buttonPos = shakeButton.AbsolutePosition + shakeButton.AbsoluteSize/2
-                                VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, true, game, 1)
-                                VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, false, game, 1)
+    -- Clean up existing connection
+    if shakeConnection then
+        shakeConnection:Disconnect()
+    end
+    
+    -- Monitor PlayerGui for shake UI
+    shakeConnection = lp.PlayerGui.ChildAdded:Connect(function(gui)
+        if gui.Name == "shakeui" and flags.autoshake then
+            -- Wait for safezone to be added
+            gui.ChildAdded:Connect(function(child)
+                if child.Name == "safezone" then
+                    -- Wait for button to be added
+                    child.ChildAdded:Connect(function(button)
+                        if button.Name == "button" and button:IsA("ImageButton") then
+                            -- Instant shake response
+                            task.spawn(function()
+                                local attempts = 0
+                                while button.Parent and flags.autoshake and attempts < 10 do
+                                    attempts = attempts + 1
+                                    
+                                    -- Multiple methods for maximum reliability
+                                    pcall(function()
+                                        -- Method 1: Mouse click at button center
+                                        local pos = button.AbsolutePosition
+                                        local size = button.AbsoluteSize
+                                        VirtualInputManager:SendMouseButtonEvent(
+                                            pos.X + size.X / 2, 
+                                            pos.Y + size.Y / 2, 
+                                            0, true, lp, 0
+                                        )
+                                        VirtualInputManager:SendMouseButtonEvent(
+                                            pos.X + size.X / 2, 
+                                            pos.Y + size.Y / 2, 
+                                            0, false, lp, 0
+                                        )
+                                    end)
+                                    
+                                    pcall(function()
+                                        -- Method 2: GuiService selection + Enter key
+                                        GuiService.SelectedObject = button
+                                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                                    end)
+                                    
+                                    pcall(function()
+                                        -- Method 3: Direct button activation
+                                        button.Activated:Fire()
+                                    end)
+                                    
+                                    task.wait(0.001) -- Very fast attempts
+                                    
+                                    -- Check if shake UI is gone (success)
+                                    if not button.Parent or not lp.PlayerGui:FindFirstChild("shakeui") then
+                                        break
+                                    end
+                                end
                             end)
-                            task.wait(0.01) -- Very small delay between attempts
                         end
                     end)
                 end
-            end
+            end)
         end
-        
-        -- Connect to PlayerGui changes for instant detection
-        playerGui.ChildAdded:Connect(function(child)
-            if child.Name == "shakeui" and flags.autoshake then
-                onShakeUIAdded()
-            end
-        end)
-        
-        -- Also check existing shake UI
-        if FindChild(playerGui, 'shakeui') then
-            onShakeUIAdded()
-        end
-    end
+    end)
 end
 
 -- Setup the enhanced shake listener
@@ -170,40 +191,20 @@ local function setupAutoCastListeners()
             task.wait(flags.autocastdelay or 1) -- Use configurable delay
             
             if flags.autocastmode == "Legit" then
-                -- Legit Mode: Simulate real player behavior
-                task.spawn(function()
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                    
-                    local hrp = gethrp()
-                    local powerBarFound = false
-                    
-                    local connection
-                    connection = hrp.ChildAdded:Connect(function(powerChild)
-                        if powerChild.Name == "power" and powerChild:FindFirstChild("powerbar") then
-                            powerBarFound = true
-                            local powerBar = powerChild.powerbar.bar
-                            
-                            local sizeConnection
-                            sizeConnection = powerBar.Changed:Connect(function(property)
-                                if property == "Size" and powerBar.Size == UDim2.new(1, 0, 1, 0) then
-                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                    sizeConnection:Disconnect()
-                                    connection:Disconnect()
-                                end
-                            end)
-                        end
-                    end)
-                    
-                    -- Failsafe
-                    task.wait(5)
-                    if not powerBarFound then
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                        connection:Disconnect()
+                -- Legit Mode: Simulate real player behavior (like king.lua)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                gethrp().ChildAdded:Connect(function()
+                    if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
+                        gethrp().power.powerbar.bar.Changed:Connect(function(property)
+                            if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                            end
+                        end)
                     end
                 end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Direct server call
-                child.events.cast:FireServer(100, 1)
+                -- Rage Mode: Instant bobber with configurable distance
+                child.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
             end
         end
     end)
@@ -216,40 +217,20 @@ local function setupAutoCastListeners()
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode
-                    task.spawn(function()
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                        
-                        local hrp = gethrp()
-                        local powerBarFound = false
-                        
-                        local connection
-                        connection = hrp.ChildAdded:Connect(function(powerChild)
-                            if powerChild.Name == "power" and powerChild:FindFirstChild("powerbar") then
-                                powerBarFound = true
-                                local powerBar = powerChild.powerbar.bar
-                                
-                                local sizeConnection
-                                sizeConnection = powerBar.Changed:Connect(function(property)
-                                    if property == "Size" and powerBar.Size == UDim2.new(1, 0, 1, 0) then
-                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                                        sizeConnection:Disconnect()
-                                        connection:Disconnect()
-                                    end
-                                end)
-                            end
-                        end)
-                        
-                        -- Failsafe
-                        task.wait(5)
-                        if not powerBarFound then
-                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
-                            connection:Disconnect()
+                    -- Legit Mode (like king.lua)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                    gethrp().ChildAdded:Connect(function()
+                        if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
+                            gethrp().power.powerbar.bar.Changed:Connect(function(property)
+                                if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
+                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                end
+                            end)
                         end
                     end)
                 elseif flags.autocastmode == "Rage" then
-                    -- Rage Mode
-                    tool.events.cast:FireServer(100, 1)
+                    -- Rage Mode: Instant bobber with configurable distance
+                    tool.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
                 end
             end
         end
@@ -260,54 +241,6 @@ end
 task.spawn(setupAutoCastListeners)
 
 RunService.Heartbeat:Connect(function()
-    -- Backup Auto Shake (In case event listener misses)
-    if flags.autoshake then
-        if FindChild(lp.PlayerGui, 'shakeui') and FindChild(lp.PlayerGui['shakeui'], 'safezone') and FindChild(lp.PlayerGui['shakeui']['safezone'], 'button') then
-            local shakeButton = lp.PlayerGui['shakeui']['safezone']['button']
-            local currentTime = tick()
-            
-            -- Prevent spam but allow rapid response
-            if not shakeDebounce or (currentTime - lastShakeTime) > 0.05 then
-                shakeDebounce = true
-                lastShakeTime = currentTime
-                
-                -- Multiple rapid fire methods for faster response
-                task.spawn(function()
-                    -- Method 1: GuiService selection + VirtualInput (fastest)
-                    GuiService.SelectedObject = shakeButton
-                    if GuiService.SelectedObject == shakeButton then
-                        game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                        game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-                    end
-                    
-                    -- Method 2: Direct button activation
-                    pcall(function()
-                        for i = 1, 3 do -- Multiple attempts for reliability
-                            shakeButton.Activated:Fire()
-                            task.wait()
-                        end
-                    end)
-                    
-                    -- Method 3: Mouse simulation
-                    pcall(function()
-                        local VirtualInputManager = game:GetService('VirtualInputManager')
-                        local camera = workspace.CurrentCamera
-                        local buttonPos = shakeButton.AbsolutePosition + shakeButton.AbsoluteSize/2
-                        
-                        VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, true, game, 1)
-                        VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, false, game, 1)
-                    end)
-                    
-                    -- Reset debounce after short delay
-                    task.wait(0.1)
-                    shakeDebounce = false
-                end)
-            end
-        else
-            shakeDebounce = false
-        end
-    end
-    
     -- Auto Cast (Legit & Rage Mode)
     if flags.autocast then
         local rod = FindRod()
@@ -351,9 +284,8 @@ RunService.Heartbeat:Connect(function()
                     end
                 end)
             elseif flags.autocastmode == "Rage" then
-                -- Rage Mode: Direct server call with max power
-                task.wait(flags.autocastdelay or 1)
-                rod.events.cast:FireServer(100, 1)
+                -- Rage Mode: Instant bobber with configurable distance
+                rod.events.cast:FireServer(100, flags.ragebobberDistance or 0.1)
             end
         end
     end
