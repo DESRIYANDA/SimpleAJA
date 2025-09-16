@@ -11,6 +11,9 @@ local lp = Players.LocalPlayer
 flags.autocastmode = "Legit" -- Default mode
 flags.autocastdelay = 1 -- Default delay in seconds
 flags.ragebobberDistance = -250 -- Default close distance for instant bobber (negative = close to character)
+flags.legitrandompower = false -- Random power bar for Legit mode
+flags.legitpowermin = 70 -- Minimum power percentage (70-100%)
+flags.legitpowermax = 100 -- Maximum power percentage
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -44,6 +47,24 @@ FindRod = function()
         return FindChildOfClass(getchar(), 'Tool')
     else
         return nil
+    end
+end
+
+-- Function to get target power percentage for Legit mode
+getTargetPower = function()
+    if flags.legitrandompower then
+        local minPower = math.max(50, flags.legitpowermin or 70) -- Minimum 50%
+        local maxPower = math.min(100, flags.legitpowermax or 100) -- Maximum 100%
+        
+        -- Ensure min is not greater than max
+        if minPower > maxPower then
+            minPower, maxPower = maxPower, minPower
+        end
+        
+        local randomPower = math.random(minPower, maxPower)
+        return randomPower / 100 -- Convert to decimal (0.7 = 70%)
+    else
+        return 1.0 -- Full power (100%)
     end
 end
 
@@ -81,6 +102,18 @@ end)
 
 mainSection:NewSlider("Rage Bobber Distance", "Distance for Rage mode bobber (-500 = very close)", 2, -500, function(value)
     flags.ragebobberDistance = value
+end)
+
+mainSection:NewToggle("Legit Random Power", "Use random power instead of always full bar", function(state)
+    flags.legitrandompower = state
+end)
+
+mainSection:NewSlider("Legit Min Power %", "Minimum power percentage for random mode", 100, 50, function(value)
+    flags.legitpowermin = value
+end)
+
+mainSection:NewSlider("Legit Max Power %", "Maximum power percentage for random mode", 100, 70, function(value)
+    flags.legitpowermax = value
 end)
 
 mainSection:NewToggle("Auto Shake", "Automatically shake when fish bites", function(state)
@@ -131,13 +164,18 @@ local function setupAutoCastListeners()
             task.wait(flags.autocastdelay or 1) -- Use configurable delay
             
             if flags.autocastmode == "Legit" then
-                -- Legit Mode: Exact same as king.lua for maximum speed
+                -- Legit Mode: With random power support
+                local targetPower = getTargetPower() -- Get random or full power
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                 gethrp().ChildAdded:Connect(function()
                     if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
                         gethrp().power.powerbar.bar.Changed:Connect(function(property)
-                            if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
-                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                            if property == "Size" then
+                                local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
+                                -- Release when power reaches target percentage
+                                if currentPower >= targetPower then
+                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                end
                             end
                         end)
                     end
@@ -156,18 +194,23 @@ local function setupAutoCastListeners()
     -- Connection 2: When reel GUI is removed (for continuous casting)
     autoCastConnection2 = lp.PlayerGui.ChildRemoved:Connect(function(gui)
         if gui.Name == "reel" and flags.autocast then
-            local tool = FindRod()
+            local tool = getchar():FindFirstChildOfClass("Tool") -- Use same method as king.lua
             if tool and tool:FindFirstChild("events") and tool.events:FindFirstChild("cast") then
                 task.wait(flags.autocastdelay or 1) -- Use configurable delay
                 
                 if flags.autocastmode == "Legit" then
-                    -- Legit Mode: Exact same as king.lua for maximum speed
+                    -- Legit Mode: With random power support
+                    local targetPower = getTargetPower() -- Get random or full power
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
                     gethrp().ChildAdded:Connect(function()
                         if gethrp():FindFirstChild("power") and gethrp().power.powerbar.bar then
                             gethrp().power.powerbar.bar.Changed:Connect(function(property)
-                                if property == "Size" and gethrp().power.powerbar.bar.Size == UDim2.new(1, 0, 1, 0) then
-                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                if property == "Size" then
+                                    local currentPower = gethrp().power.powerbar.bar.Size.X.Scale
+                                    -- Release when power reaches target percentage
+                                    if currentPower >= targetPower then
+                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    end
                                 end
                             end)
                         end
@@ -175,7 +218,7 @@ local function setupAutoCastListeners()
                 elseif flags.autocastmode == "Rage" then
                     -- Rage Mode: Hold mouse briefly then instant cast
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
-                    task.wait(0.1) -- Hold mouse for 0.5 seconds
+                    task.wait(0.5) -- Hold mouse for 0.5 seconds  
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
                     task.wait(0.1) -- Small delay before cast
                     tool.events.cast:FireServer(100, flags.ragebobberDistance or -250)
