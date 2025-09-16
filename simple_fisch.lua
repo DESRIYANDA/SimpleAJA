@@ -1,36 +1,6 @@
 --// Services
-local Players = cloneref(game:GetService-- Function to get target power percentage for Legit mode
-getTargetPower = function()
-    if flags.legitrandompower then
-        local minPower = math.max(50, flags.legitpowermin or 70) -- Minimum 50%
-        local maxPower = math.min(100, flags.legitpowermax or 100) -- Maximum 100%
-        
-        -- Ensure min is not greater than max
-        if minPower > maxPower then
-            minPower, maxPower = maxPower, minPower
-        end
-        
-        local randomPower = math.random(minPower, maxPower)
-        return randomPower / 100 -- Convert to decimal (0.7 = 70%)
-    else
-        return 1.0 -- Full power (100%)
-    end
-end
-
--- Function to get random hold duration for Legit mode
-getHoldDuration = function()
-    local minHold = math.max(0.1, flags.legitholdmin or 0.3) -- Minimum 0.1 seconds
-    local maxHold = math.min(3.0, flags.legitholdmax or 1.2) -- Maximum 3.0 seconds
-    
-    -- Ensure min is not greater than max
-    if minHold > maxHold then
-        minHold, maxHold = maxHold, minHold
-    end
-    
-    -- Generate random float between min and max
-    local randomHold = minHold + (math.random() * (maxHold - minHold))
-    return randomHold
-endl ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
+local Players = cloneref(game:GetService('Players'))
+local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -92,6 +62,28 @@ getTargetPower = function()
         if minPower > maxPower then
             minPower, maxPower = maxPower, minPower
         end
+        
+        local randomPower = math.random(minPower, maxPower)
+        return randomPower / 100 -- Convert to decimal (0.7 = 70%)
+    else
+        return 1.0 -- Full power (100%)
+    end
+end
+
+-- Function to get random hold duration for Legit mode
+getHoldDuration = function()
+    local minHold = math.max(0.1, flags.legitholdmin or 0.3) -- Minimum 0.1 seconds
+    local maxHold = math.min(3.0, flags.legitholdmax or 1.2) -- Maximum 3.0 seconds
+    
+    -- Ensure min is not greater than max
+    if minHold > maxHold then
+        minHold, maxHold = maxHold, minHold
+    end
+    
+    -- Generate random float between min and max
+    local randomHold = minHold + (math.random() * (maxHold - minHold))
+    return randomHold
+end
         
         local randomPower = math.random(minPower, maxPower)
         return randomPower / 100 -- Convert to decimal (0.7 = 70%)
