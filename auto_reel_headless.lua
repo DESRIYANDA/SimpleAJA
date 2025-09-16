@@ -37,6 +37,7 @@ local function setupGUIListener()
     -- AUTOSHAKE: Listen for shakeui GUI (like ori.lua)
     playerGui.ChildAdded:Connect(function(child)
         if child.Name == "shakeui" and isRunning and settings.autoShake then
+            print("🔍 [Debug] ShakeUI detected via ChildAdded")
             task.wait(0.01) -- Tiny delay to ensure GUI is ready
             handleAutoShake(child)
         end
@@ -45,6 +46,7 @@ local function setupGUIListener()
     -- INSTANT REEL: Listen for reel GUI
     playerGui.ChildAdded:Connect(function(child)
         if child.Name == "reel" and isRunning and settings.instantReel then
+            print("🔍 [Debug] Reel GUI detected via ChildAdded")
             task.wait(0.01) -- Tiny delay to ensure GUI is ready
             handleInstantReel()
         end
@@ -53,11 +55,13 @@ local function setupGUIListener()
     -- Check for existing GUIs
     local shakeui = playerGui:FindFirstChild("shakeui")
     if shakeui and isRunning and settings.autoShake then
+        print("🔍 [Debug] Existing ShakeUI found during setup")
         handleAutoShake(shakeui)
     end
     
     local reelGui = playerGui:FindFirstChild("reel")
     if reelGui and isRunning and settings.instantReel then
+        print("🔍 [Debug] Existing Reel GUI found during setup")
         handleInstantReel()
     end
 end
@@ -106,62 +110,127 @@ end
 local function handleAutoShake(shakeui)
     if not isRunning or not settings.autoShake then return end
     
-    local button = shakeui:FindFirstChild("safezone")
-    if button then
-        button = button:FindFirstChild("button")
+    -- Check structure: shakeui > safezone > button (like ori.lua)
+    local safezone = shakeui:FindFirstChild("safezone")
+    if not safezone then 
+        print("❌ [AutoShake] Safezone not found in shakeui")
+        return 
     end
     
-    if button and button:IsA("GuiButton") then
-        -- Use VirtualInputManager like ori.lua - Method 1: Mouse Events
+    local button = safezone:FindFirstChild("button")
+    if not button then 
+        print("❌ [AutoShake] Button not found in safezone")
+        return 
+    end
+    
+    if button:IsA("GuiButton") or button:IsA("ImageButton") then
+        if not button.Visible then 
+            print("❌ [AutoShake] Button not visible")
+            return 
+        end
+        
+        -- Use exact method from ori.lua with GuiService
+        local GuiService = game:GetService("GuiService")
         local VirtualInputManager = game:GetService("VirtualInputManager")
-        local center = button.AbsolutePosition + (button.AbsoluteSize / 2)
         
         pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, button, 1)
-            VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, button, 1)
+            -- Step 1: Set SelectedObject like ori.lua
+            GuiService.SelectedObject = button
+            
+            -- Step 2: Verify selection worked
+            if GuiService.SelectedObject == button then
+                -- Step 3: Send key events (like ori.lua)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                print("🎣 AutoShake activated successfully!")
+            else
+                print("❌ [AutoShake] Failed to select button")
+            end
         end)
-        
-        -- Method 2: Key Events (like ori.lua)
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-        end)
-        
-        print("🎣 AutoShake activated")
+    else
+        print("❌ [AutoShake] Invalid button type: " .. button.ClassName)
     end
 end
 
--- Instant Reel handler using ReplicatedStorage events (like ori.lua)
-local function handleInstantReel()
+-- Super Instant Reel handler (like ori.lua superinstantreel)
+local function handleSuperInstantReel()
     if not isRunning or not settings.instantReel then return end
     
-    -- Check if we have a rod first (like ori.lua)
     local rod = FindRod()
     if not rod then return end
     
-    -- Check lure value like ori.lua
     local lureValue = rod.values and rod.values.lure and rod.values.lure.Value or 0
-    if lureValue < 100 then return end -- Only reel when lure is 100%
+    local biteValue = rod.values and rod.values.bite and rod.values.bite.Value or false
     
-    -- Use the same method as ori.lua
-    pcall(function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local events = ReplicatedStorage:FindFirstChild("events")
-        if events then
-            local reelfinished = events:FindFirstChild("reelfinished")
-            if reelfinished then
-                reelfinished:FireServer(100, true)
-                print("⚡ Instant reel activated (lure: " .. lureValue .. "%)")
-                
-                -- Clean up reel GUI like ori.lua
-                local playerGui = LocalPlayer.PlayerGui
-                local reelGui = playerGui:FindFirstChild("reel")
-                if reelGui then
-                    reelGui:Destroy()
+    -- SMOOTH TRIGGER: Lure >= 98% OR bite detected (like ori.lua)
+    if lureValue >= 98 or biteValue == true then
+        pcall(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local events = ReplicatedStorage:FindFirstChild("events")
+            if events then
+                local reelfinished = events:FindFirstChild("reelfinished")
+                if reelfinished then
+                    -- Single optimized call (no spam)
+                    reelfinished:FireServer(100, true)
+                    print("⚡ Super Instant Reel activated! (lure: " .. lureValue .. "%, bite: " .. tostring(biteValue) .. ")")
+                    
+                    -- Smooth GUI cleanup
+                    local playerGui = LocalPlayer.PlayerGui
+                    local reelGui = playerGui:FindFirstChild("reel")
+                    if reelGui then
+                        reelGui:Destroy()
+                    end
+                    
+                    -- FAST FISH LIFTING: Speed boost for character animations
+                    pcall(function()
+                        local character = LocalPlayer.Character
+                        if character and character:FindFirstChild("Humanoid") then
+                            local humanoid = character.Humanoid
+                            
+                            -- 5x speed boost for all animations during catch
+                            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                                track:AdjustSpeed(5)
+                            end
+                            
+                            -- Reset to normal speed after brief period
+                            task.spawn(function()
+                                task.wait(0.2)
+                                for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                                    track:AdjustSpeed(1)
+                                end
+                            end)
+                        end
+                    end)
                 end
             end
-        end
-    end)
+        end)
+    end
+end
+
+-- Regular Auto Reel handler (like ori.lua autoreel)
+local function handleAutoReel()
+    if not isRunning or not settings.instantReel then return end
+    
+    local rod = FindRod()
+    if not rod then return end
+    
+    -- Check lure value exactly 100% like ori.lua
+    local lureValue = rod.values and rod.values.lure and rod.values.lure.Value or 0
+    if lureValue == 100 then
+        pcall(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local events = ReplicatedStorage:FindFirstChild("events")
+            if events then
+                local reelfinished = events:FindFirstChild("reelfinished")
+                if reelfinished then
+                    -- Small delay like ori.lua
+                    task.wait(0.1)
+                    reelfinished:FireServer(100, true)
+                    print("🎣 Auto Reel activated (lure: " .. lureValue .. "%)")
+                end
+            end
+        end)
+    end
 end
 local function instantCast()
     if not isRunning or not settings.instantCast then return end
@@ -290,25 +359,45 @@ local function blockAnimations()
     end
 end
 
--- Check for existing GUIs and handle them
+-- Check for existing GUIs and handle them + continuous reel checking
 local function checkForActiveGUIs()
     if not isRunning then return end
     
     local playerGui = LocalPlayer.PlayerGui
     
-    -- Check for shake UI
+    -- Check for shake UI with detailed debugging
     if settings.autoShake then
         local shakeui = playerGui:FindFirstChild("shakeui")
         if shakeui then
+            print("🔍 [Debug] Found shakeui GUI")
             handleAutoShake(shakeui)
         end
     end
     
-    -- Check for reel UI  
+    -- CONTINUOUS INSTANT REEL CHECK (like ori.lua)
     if settings.instantReel then
+        -- Method 1: Super Instant Reel (lure >= 98% OR bite detected)
+        handleSuperInstantReel()
+        
+        -- Method 2: Regular Auto Reel (lure = 100%)
+        handleAutoReel()
+        
+        -- Method 3: Check for reel GUI (backup)
         local reelGui = playerGui:FindFirstChild("reel")
         if reelGui then
-            handleInstantReel()
+            print("🔍 [Debug] Found reel GUI - forcing instant reel")
+            pcall(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local events = ReplicatedStorage:FindFirstChild("events")
+                if events then
+                    local reelfinished = events:FindFirstChild("reelfinished")
+                    if reelfinished then
+                        reelfinished:FireServer(100, true)
+                        print("⚡ GUI-triggered instant reel")
+                        reelGui:Destroy()
+                    end
+                end
+            end)
         end
     end
 end
@@ -351,6 +440,17 @@ local function startAutoReel()
     end)
     
     print("✅ Auto Reel Silent started (Ultra Fast Mode)")
+    print("🔧 [Debug] Settings:")
+    print("   - instantReel:", settings.instantReel)
+    print("   - autoShake:", settings.autoShake) 
+    print("   - silentMode:", settings.silentMode)
+    print("   - zeroAnimation:", settings.zeroAnimation)
+    print("   - fastBobber:", settings.fastBobber)
+    print("🎯 [Debug] Will check for:")
+    print("   - shakeui GUI for AutoShake")
+    print("   - Rod lure >= 98% for Super Instant Reel")
+    print("   - Rod lure = 100% for Auto Reel")
+    print("   - reel GUI as backup")
 end
 
 local function stopAutoReel()
@@ -497,6 +597,39 @@ _G.AutoReelHeadless = {
     
     isRunning = function()
         return isRunning
+    end,
+    
+    -- DEBUGGING FUNCTIONS
+    testAutoShake = function()
+        print("🧪 [Test] Testing AutoShake...")
+        local playerGui = LocalPlayer.PlayerGui
+        local shakeui = playerGui:FindFirstChild("shakeui")
+        if shakeui then
+            print("✅ [Test] ShakeUI found, attempting shake...")
+            handleAutoShake(shakeui)
+        else
+            print("❌ [Test] No ShakeUI found in PlayerGui")
+            -- List all GUIs for debugging
+            print("🔍 [Test] Available GUIs:")
+            for _, gui in pairs(playerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") then
+                    print("  - " .. gui.Name)
+                end
+            end
+        end
+    end,
+    
+    debugGUI = function()
+        print("🔍 [Debug] Current PlayerGui children:")
+        local playerGui = LocalPlayer.PlayerGui
+        for _, child in pairs(playerGui:GetChildren()) do
+            if child:IsA("ScreenGui") then
+                print("  📄 " .. child.Name)
+                for _, subchild in pairs(child:GetChildren()) do
+                    print("    └─ " .. subchild.Name .. " (" .. subchild.ClassName .. ")")
+                end
+            end
+        end
     end
 }
 
