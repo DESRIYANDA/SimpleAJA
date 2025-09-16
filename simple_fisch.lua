@@ -3,10 +3,13 @@ local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 --// Variables
 local flags = {}
 local lp = Players.LocalPlayer
+flags.autocastmode = "Legit" -- Default mode
+flags.autocastdelay = 1 -- Default delay in seconds
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -67,6 +70,14 @@ mainSection:NewToggle("Auto Cast", "Automatically cast your fishing rod", functi
     flags.autocast = state
 end)
 
+mainSection:NewDropdown("Auto Cast Mode", "Choose between Legit and Rage mode", {"Legit", "Rage"}, function(mode)
+    flags.autocastmode = mode
+end)
+
+mainSection:NewSlider("Auto Cast Delay", "Delay before auto casting (seconds)", 10, 0, function(value)
+    flags.autocastdelay = value
+end)
+
 mainSection:NewToggle("Auto Shake", "Automatically shake when fish bites", function(state)
     flags.autoshake = state
 end)
@@ -85,10 +96,6 @@ end)
 
 mainSection:NewToggle("Super Instant Reel", "Skip reel animation and instantly catch fish", function(state)
     flags.superinstantreel = state
-end)
-
-mainSection:NewToggle("Rod Front Position", "Keep rod in front when casting instead of behind", function(state)
-    flags.rodfrontposition = state
 end)
 
 --// Main Logic Loops
@@ -153,6 +160,105 @@ end
 -- Setup the enhanced shake listener
 task.spawn(setupShakeListener)
 
+-- Enhanced AutoCast Event Listeners
+local autoCastConnection1, autoCastConnection2
+
+local function setupAutoCastListeners()
+    -- Connection 1: When tool is equipped
+    autoCastConnection1 = getchar().ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and child:FindFirstChild("events") and child.events:FindFirstChild("cast") and flags.autocast then
+            task.wait(flags.autocastdelay or 1) -- Use configurable delay
+            
+            if flags.autocastmode == "Legit" then
+                -- Legit Mode: Simulate real player behavior
+                task.spawn(function()
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                    
+                    local hrp = gethrp()
+                    local powerBarFound = false
+                    
+                    local connection
+                    connection = hrp.ChildAdded:Connect(function(powerChild)
+                        if powerChild.Name == "power" and powerChild:FindFirstChild("powerbar") then
+                            powerBarFound = true
+                            local powerBar = powerChild.powerbar.bar
+                            
+                            local sizeConnection
+                            sizeConnection = powerBar.Changed:Connect(function(property)
+                                if property == "Size" and powerBar.Size == UDim2.new(1, 0, 1, 0) then
+                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                    sizeConnection:Disconnect()
+                                    connection:Disconnect()
+                                end
+                            end)
+                        end
+                    end)
+                    
+                    -- Failsafe
+                    task.wait(5)
+                    if not powerBarFound then
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                        connection:Disconnect()
+                    end
+                end)
+            elseif flags.autocastmode == "Rage" then
+                -- Rage Mode: Direct server call
+                child.events.cast:FireServer(100, 1)
+            end
+        end
+    end)
+    
+    -- Connection 2: When reel GUI is removed (for continuous casting)
+    autoCastConnection2 = lp.PlayerGui.ChildRemoved:Connect(function(gui)
+        if gui.Name == "reel" and flags.autocast then
+            local tool = FindRod()
+            if tool and tool:FindFirstChild("events") and tool.events:FindFirstChild("cast") then
+                task.wait(flags.autocastdelay or 1) -- Use configurable delay
+                
+                if flags.autocastmode == "Legit" then
+                    -- Legit Mode
+                    task.spawn(function()
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                        
+                        local hrp = gethrp()
+                        local powerBarFound = false
+                        
+                        local connection
+                        connection = hrp.ChildAdded:Connect(function(powerChild)
+                            if powerChild.Name == "power" and powerChild:FindFirstChild("powerbar") then
+                                powerBarFound = true
+                                local powerBar = powerChild.powerbar.bar
+                                
+                                local sizeConnection
+                                sizeConnection = powerBar.Changed:Connect(function(property)
+                                    if property == "Size" and powerBar.Size == UDim2.new(1, 0, 1, 0) then
+                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                        sizeConnection:Disconnect()
+                                        connection:Disconnect()
+                                    end
+                                end)
+                            end
+                        end)
+                        
+                        -- Failsafe
+                        task.wait(5)
+                        if not powerBarFound then
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                            connection:Disconnect()
+                        end
+                    end)
+                elseif flags.autocastmode == "Rage" then
+                    -- Rage Mode
+                    tool.events.cast:FireServer(100, 1)
+                end
+            end
+        end
+    end)
+end
+
+-- Setup AutoCast listeners
+task.spawn(setupAutoCastListeners)
+
 RunService.Heartbeat:Connect(function()
     -- Backup Auto Shake (In case event listener misses)
     if flags.autoshake then
@@ -202,91 +308,53 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
-    -- Rod Front Position
-    if flags.rodfrontposition then
-        local character = getchar()
-        local humanoid = gethum()
-        
-        -- Adjust rod position for front casting
-        local rod = FindRod()
-        if rod and rod.Parent == character then
-            -- Modify rod grip and position
-            pcall(function()
-                local rightArm = character:FindFirstChild("Right Arm")
-                local leftArm = character:FindFirstChild("Left Arm")
-                
-                if rightArm then
-                    local rightGrip = rightArm:FindFirstChild("RightGrip")
-                    if rightGrip then
-                        -- Adjust the rod orientation for front position
-                        rightGrip.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-30), math.rad(15), math.rad(0))
-                        rightGrip.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(0))
-                    end
-                end
-                
-                -- Adjust left arm for better rod handling
-                if leftArm then
-                    local leftGrip = leftArm:FindFirstChild("LeftGrip")
-                    if leftGrip then
-                        leftGrip.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-20), math.rad(-10), math.rad(0))
-                    end
-                end
-                
-                -- Also adjust rod handle position if available
-                if rod:FindFirstChild("Handle") then
-                    local handle = rod.Handle
-                    -- Store original position if not stored
-                    if not handle:GetAttribute("OriginalCFrame") then
-                        handle:SetAttribute("OriginalCFrame", tostring(handle.CFrame))
-                    end
-                    
-                    -- Ensure rod points forward during idle
-                    if handle.AssemblyLinearVelocity.Magnitude < 1 then
-                        local character_root = character:FindFirstChild("HumanoidRootPart")
-                        if character_root then
-                            local forward_position = character_root.CFrame.Position + character_root.CFrame.LookVector * 2
-                            local look_at_cframe = CFrame.lookAt(handle.Position, forward_position)
-                            handle.CFrame = look_at_cframe * CFrame.Angles(math.rad(-15), 0, 0)
-                        end
-                    end
-                end
-                
-                -- Adjust character stance for better casting
-                if humanoid and humanoid.RootPart then
-                    local rootPart = humanoid.RootPart
-                    -- Ensure character maintains good casting posture
-                    local humanoidDesc = humanoid:FindFirstChild("HumanoidDescription")
-                    if humanoidDesc then
-                        -- Adjust character animations for better rod positioning
-                        humanoid:LoadAnimation(humanoid:FindFirstChild("Animate"))
-                    end
-                end
-            end)
-        end
-        
-        -- Modify body rod model if exists
-        local bodyRod = character:FindFirstChild("RodBodyModel")
-        if bodyRod then
-            pcall(function()
-                if bodyRod:FindFirstChild("Handle") then
-                    local handle = bodyRod.Handle
-                    local character_root = character:FindFirstChild("HumanoidRootPart")
-                    if character_root then
-                        -- Position body rod to point forward
-                        local forward_direction = character_root.CFrame.LookVector
-                        local rod_position = character_root.Position + forward_direction * 1.5
-                        handle.CFrame = CFrame.lookAt(rod_position, rod_position + forward_direction)
-                    end
-                end
-            end)
-        end
-    end
-    
-    -- Auto Cast
+    -- Auto Cast (Legit & Rage Mode)
     if flags.autocast then
         local rod = FindRod()
-        if rod ~= nil and rod['values']['lure'].Value <= .001 and task.wait(.5) then
-            rod.events.cast:FireServer(100, 1)
+        if rod ~= nil and rod['values']['lure'].Value <= .001 then
+            if flags.autocastmode == "Legit" then
+                -- Legit Mode: Simulate real player behavior with power bar
+                task.spawn(function()
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, lp, 0)
+                    
+                    -- Wait for power bar to appear and monitor it
+                    local hrp = gethrp()
+                    local powerBarFound = false
+                    
+                    -- Monitor for power bar appearance
+                    local connection
+                    connection = hrp.ChildAdded:Connect(function(child)
+                        if child.Name == "power" and child:FindFirstChild("powerbar") then
+                            powerBarFound = true
+                            local powerBar = child.powerbar.bar
+                            
+                            -- Monitor power bar size changes
+                            local sizeConnection
+                            sizeConnection = powerBar.Changed:Connect(function(property)
+                                if property == "Size" then
+                                    -- Release when power bar reaches 100%
+                                    if powerBar.Size == UDim2.new(1, 0, 1, 0) then
+                                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                                        sizeConnection:Disconnect()
+                                        connection:Disconnect()
+                                    end
+                                end
+                            end)
+                        end
+                    end)
+                    
+                    -- Failsafe: Auto release after 5 seconds if power bar not found
+                    task.wait(5)
+                    if not powerBarFound then
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, lp, 0)
+                        connection:Disconnect()
+                    end
+                end)
+            elseif flags.autocastmode == "Rage" then
+                -- Rage Mode: Direct server call with max power
+                task.wait(flags.autocastdelay or 1)
+                rod.events.cast:FireServer(100, 1)
+            end
         end
     end
     
@@ -332,26 +400,6 @@ if CheckFunc(hookmetamethod) then
         -- Perfect Cast Hook
         if method == 'FireServer' and self.Name == 'cast' and flags.perfectcast then
             args[1] = 100
-            return old(self, unpack(args))
-        -- Rod Front Position Cast Hook
-        elseif method == 'FireServer' and self.Name == 'cast' and flags.rodfrontposition then
-            -- Ensure casting direction is forward
-            args[1] = args[1] or 100 -- Power
-            args[2] = 1 -- Direction (1 = forward, -1 = backward)
-            
-            -- Modify casting to ensure forward direction
-            task.spawn(function()
-                local character = getchar()
-                local humanoid = gethum()
-                if humanoid and humanoid.RootPart then
-                    local rootPart = humanoid.RootPart
-                    local lookDirection = rootPart.CFrame.LookVector
-                    
-                    -- Ensure character faces forward during cast
-                    rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + lookDirection)
-                end
-            end)
-            
             return old(self, unpack(args))
         -- Always Catch Hook
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatch then
