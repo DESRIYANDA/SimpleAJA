@@ -1,9 +1,10 @@
 --// Services
+local cloneref = cloneref or function(obj) return obj end -- Fallback if cloneref doesn't exist
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
 
 --// Variables
 local flags = {}
@@ -16,6 +17,8 @@ flags.legitpowermin = 70 -- Minimum power percentage (70-100%)
 flags.legitpowermax = 100 -- Maximum power percentage
 flags.legitholdmin = 0.3 -- Minimum hold duration in seconds
 flags.legitholdmax = 1.2 -- Maximum hold duration in seconds
+
+print("[SIMPLE FISCH] Script starting... Loading UI...")
 
 --// Functions
 FindChildOfClass = function(parent, classname)
@@ -91,15 +94,31 @@ local success, result = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/kavo.lua"))()
 end)
 
-if success then
+if success and result then
     Kavo = result
+    print("[SIMPLE FISCH] Kavo UI loaded successfully from GitHub")
 else
     -- Fallback jika gagal load dari GitHub
-    warn("Failed to load Kavo from GitHub, using fallback...")
-    Kavo = loadstring(game:HttpGet("https://pastebin.com/raw/vff1bQ9F"))()
+    warn("[SIMPLE FISCH] Failed to load Kavo from GitHub, using fallback...")
+    local fallbackSuccess, fallbackResult = pcall(function()
+        return loadstring(game:HttpGet("https://pastebin.com/raw/vff1bQ9F"))()
+    end)
+    
+    if fallbackSuccess and fallbackResult then
+        Kavo = fallbackResult
+        print("[SIMPLE FISCH] Kavo UI loaded from fallback")
+    else
+        error("[SIMPLE FISCH] Failed to load Kavo UI from both GitHub and fallback sources!")
+        return
+    end
 end
 
 --// UI Creation
+if not Kavo then
+    error("[SIMPLE FISCH] Kavo UI library failed to load!")
+    return
+end
+
 local window = Kavo.CreateLib("Simple Fisch")
 local mainTab = window:NewTab("Main Features")
 local mainSection = mainTab:NewSection("Fishing Automation")
@@ -308,32 +327,43 @@ end)
 
 --// Hooks for Perfect Cast and Always Catch
 if CheckFunc(hookmetamethod) then
-    local old; old = hookmetamethod(game, "__namecall", function(self, ...)
-        local method, args = getnamecallmethod(), {...}
-        
-        -- Perfect Cast Hook
-        if method == 'FireServer' and self.Name == 'cast' and flags.perfectcast then
-            args[1] = 100
-            return old(self, unpack(args))
-        -- Always Catch Hook
-        elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatch then
-            args[1] = 100
-            args[2] = true
-            return old(self, unpack(args))
-        -- Always Catch v2 Hook (loading bar bypass)
-        elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatchv2 then
-            -- Simulate normal minigame completion without perfect catch
-            -- Use random success rate that looks natural (60-90%)
-            local naturalRate = math.random(60, 90)
-            args[1] = naturalRate -- Natural success rate (not 100%)
-            args[2] = true -- Force caught = true (bypass loading bar requirement)
-            return old(self, unpack(args))
-        -- Super Instant Reel Hook
-        elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.superinstantreel then
-            args[1] = 100
-            args[2] = true
-            return old(self, unpack(args))
-        end
-        return old(self, ...)
+    print("[SIMPLE FISCH] Setting up hooks...")
+    local hookSuccess, hookError = pcall(function()
+        local old; old = hookmetamethod(game, "__namecall", function(self, ...)
+            local method, args = getnamecallmethod(), {...}
+            
+            -- Perfect Cast Hook
+            if method == 'FireServer' and self.Name == 'cast' and flags.perfectcast then
+                args[1] = 100
+                return old(self, unpack(args))
+            -- Always Catch Hook
+            elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatch then
+                args[1] = 100
+                args[2] = true
+                return old(self, unpack(args))
+            -- Always Catch v2 Hook (loading bar bypass)
+            elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatchv2 then
+                -- Simulate normal minigame completion without perfect catch
+                -- Use random success rate that looks natural (60-90%)
+                local naturalRate = math.random(60, 90)
+                args[1] = naturalRate -- Natural success rate (not 100%)
+                args[2] = true -- Force caught = true (bypass loading bar requirement)
+                return old(self, unpack(args))
+            -- Super Instant Reel Hook
+            elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.superinstantreel then
+                args[1] = 100
+                args[2] = true
+                return old(self, unpack(args))
+            end
+            return old(self, ...)
+        end)
     end)
+    
+    if hookSuccess then
+        print("[SIMPLE FISCH] Hooks setup successfully")
+    else
+        warn("[SIMPLE FISCH] Failed to setup hooks: " .. tostring(hookError))
+    end
+else
+    warn("[SIMPLE FISCH] hookmetamethod is not available in this executor")
 end
