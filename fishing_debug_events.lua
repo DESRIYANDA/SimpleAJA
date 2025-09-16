@@ -9,28 +9,17 @@ local function debugPrint(message)
     print("[EVENT DEBUG] " .. tostring(message))
 end
 
--- Monitor reelfinished event directly (safer approach)
+-- Monitor reelfinished event safely (no FireServer override)
 local function monitorReelfinishedEvent()
     local reelfinishedEvent = ReplicatedStorage:FindFirstChild("events")
     if reelfinishedEvent then
         reelfinishedEvent = reelfinishedEvent:FindFirstChild("reelfinished")
         if reelfinishedEvent then
             debugPrint("Found reelfinished event in ReplicatedStorage")
+            debugPrint("Event type: " .. reelfinishedEvent.ClassName)
             
-            -- Monitor when event is fired (client-side detection)
-            local originalFireServer = reelfinishedEvent.FireServer
-            reelfinishedEvent.FireServer = function(self, ...)
-                local args = {...}
-                debugPrint("REELFINISHED FIRED!")
-                debugPrint("  - Arg 1 (success rate): " .. tostring(args[1]))
-                debugPrint("  - Arg 2 (caught): " .. tostring(args[2]))
-                debugPrint("  - Total args: " .. #args)
-                
-                -- Call original function
-                return originalFireServer(self, ...)
-            end
-            
-            debugPrint("Successfully hooked reelfinished event")
+            -- Safe monitoring approach - just verify event exists
+            debugPrint("Event is accessible for firing")
         else
             debugPrint("reelfinished event not found")
         end
