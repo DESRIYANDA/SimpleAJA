@@ -9,36 +9,35 @@ local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 local LocalPlayer = Players.LocalPlayer
 
--- GUI Change Detection for instant response
+-- GUI Change Detection for instant response (FIXED)
 local function setupGUIListener()
     local playerGui = LocalPlayer.PlayerGui
     
-    -- Listen for fishing GUI changes
+    -- AUTOSHAKE: Listen for shakeui GUI (like ori.lua)
     playerGui.ChildAdded:Connect(function(child)
-        if child.Name == "FishingGUI" and isRunning then
-            -- Immediate check when fishing GUI appears
+        if child.Name == "shakeui" and isRunning and settings.autoShake then
             task.wait(0.01) -- Tiny delay to ensure GUI is ready
-            instantReel()
+            handleAutoShake(child)
         end
     end)
     
-    -- Monitor existing fishing GUI
-    local fishingGui = playerGui:FindFirstChild("FishingGUI")
-    if fishingGui then
-        fishingGui.ChildAdded:Connect(function(child)
-            if isRunning and (child.Name == "Reel" or child.Name == "Shake") then
-                task.wait(0.01) -- Tiny delay to ensure button is ready  
-                instantReel()
-            end
-        end)
-        
-        -- Also listen for property changes
-        fishingGui.DescendantAdded:Connect(function(descendant)
-            if isRunning and descendant:IsA("GuiButton") and (descendant.Name == "Reel" or descendant.Name == "Shake") then
-                task.wait(0.01)
-                instantReel()
-            end
-        end)
+    -- INSTANT REEL: Listen for reel GUI
+    playerGui.ChildAdded:Connect(function(child)
+        if child.Name == "reel" and isRunning and settings.instantReel then
+            task.wait(0.01) -- Tiny delay to ensure GUI is ready
+            handleInstantReel()
+        end
+    end)
+    
+    -- Check for existing GUIs
+    local shakeui = playerGui:FindFirstChild("shakeui")
+    if shakeui and isRunning and settings.autoShake then
+        handleAutoShake(shakeui)
+    end
+    
+    local reelGui = playerGui:FindFirstChild("reel")
+    if reelGui and isRunning and settings.instantReel then
+        handleInstantReel()
     end
 end
 
@@ -82,9 +81,53 @@ function _G.AutoReelHeadless.setMaxBobberDistance(val)
     end
 end
 
+-- AutoShake handler using VirtualInputManager (like ori.lua)
+local function handleAutoShake(shakeui)
+    if not isRunning or not settings.autoShake then return end
+    
+    local button = shakeui:FindFirstChild("safezone")
+    if button then
+        button = button:FindFirstChild("button")
+    end
+    
+    if button and button:IsA("GuiButton") then
+        -- Use VirtualInputManager like ori.lua
+        local VirtualInputManager = game:GetService("VirtualInputManager")
+        local center = button.AbsolutePosition + (button.AbsoluteSize / 2)
+        
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, button, 1)
+            VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, button, 1)
+        end)
+        
+        print("🎣 AutoShake activated")
+    end
 end
 
--- Instant Cast System - Speed up rod casting
+-- Instant Reel handler using ReplicatedStorage events (like ori.lua)
+local function handleInstantReel()
+    if not isRunning or not settings.instantReel then return end
+    
+    -- Use the same method as ori.lua
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local events = ReplicatedStorage:FindFirstChild("events")
+        if events then
+            local reelfinished = events:FindFirstChild("reelfinished")
+            if reelfinished then
+                reelfinished:FireServer(100, true)
+                print("⚡ Instant reel activated")
+                
+                -- Clean up reel GUI like ori.lua
+                local playerGui = LocalPlayer.PlayerGui
+                local reelGui = playerGui:FindFirstChild("reel")
+                if reelGui then
+                    reelGui:Destroy()
+                end
+            end
+        end
+    end)
+end
 local function instantCast()
     if not isRunning or not settings.instantCast then return end
     
@@ -212,114 +255,27 @@ local function blockAnimations()
     end
 end
 
--- Instant reel function - High Priority
-local function instantReel()
-    if not isRunning or not settings.instantReel then return end
+-- Check for existing GUIs and handle them
+local function checkForActiveGUIs()
+    if not isRunning then return end
     
-    -- Look for fishing GUI with multiple attempts
     local playerGui = LocalPlayer.PlayerGui
-    local fishingGui = playerGui:FindFirstChild("FishingGUI")
     
-    if fishingGui then
-        -- Priority 1: Reel button (most important)
-        local reelButton = fishingGui:FindFirstChild("Reel")
-        if reelButton and reelButton.Visible and reelButton.AbsoluteSize.X > 0 then
-            -- Multiple fire methods for maximum reliability
-            if settings.silentMode then
-                pcall(function()
-                    firesignal(reelButton.Activated)
-                    firesignal(reelButton.MouseButton1Click)
-                end)
-            else
-                pcall(function()
-                    reelButton:TriggerEvent("MouseClick")
-                    firesignal(reelButton.Activated)
-                end)
-            end
-            return -- Exit early after successful reel
-        end
-        
-        -- Priority 2: Auto shake handling
-        if settings.autoShake then
-            local shakeButton = fishingGui:FindFirstChild("Shake")
-            if shakeButton and shakeButton.Visible and shakeButton.AbsoluteSize.X > 0 then
-                pcall(function()
-                    firesignal(shakeButton.Activated)
-                    firesignal(shakeButton.MouseButton1Click)
-                end)
-            end
+    -- Check for shake UI
+    if settings.autoShake then
+        local shakeui = playerGui:FindFirstChild("shakeui")
+        if shakeui then
+            handleAutoShake(shakeui)
         end
     end
     
-    -- Also check for any fishing-related RemoteEvents
-    pcall(function()
-        local replicatedStorage = game:GetService("ReplicatedStorage")
-        
-        -- Method 1: Standard shared events
-        local events = replicatedStorage:FindFirstChild("shared")
-        if events then
-            events = events:FindFirstChild("modules")
-            if events then
-                events = events:FindFirstChild("fishing")
-                if events then
-                    events = events:FindFirstChild("rodresources")
-                    if events then
-                        events = events:FindFirstChild("events")
-                        if events then
-                            -- Use handlebobber for instant reel
-                            local handlebobberEvent = events:FindFirstChild("handlebobber")
-                            if handlebobberEvent then
-                                handlebobberEvent:FireServer("reel")
-                            end
-                            
-                            -- Also try direct reel events
-                            local reelEvent = events:FindFirstChild("reel")
-                            if reelEvent then
-                                reelEvent:FireServer()
-                            end
-                        end
-                    end
-                end
-            end
+    -- Check for reel UI  
+    if settings.instantReel then
+        local reelGui = playerGui:FindFirstChild("reel")
+        if reelGui then
+            handleInstantReel()
         end
-        
-        -- Method 2: Player-specific rod events (from dump analysis)
-        local character = LocalPlayer.Character
-        if character then
-            for _, tool in pairs(character:GetChildren()) do
-                if tool:IsA("Tool") and string.find(tool.Name:lower(), "rod") then
-                    local rodEvents = tool:FindFirstChild("events")
-                    if rodEvents then
-                        local handlebobber = rodEvents:FindFirstChild("handlebobber")
-                        if handlebobber then
-                            handlebobber:FireServer("instant_reel")
-                        end
-                        
-                        local catchfinish = rodEvents:FindFirstChild("catchfinish")
-                        if catchfinish then
-                            catchfinish:FireServer()
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Method 3: Backpack rod events
-        local backpack = LocalPlayer.Backpack
-        if backpack then
-            for _, tool in pairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") and string.find(tool.Name:lower(), "rod") then
-                    local rodEvents = tool:FindFirstChild("events")
-                    if rodEvents then
-                        local handlebobber = rodEvents:FindFirstChild("handlebobber")
-                        if handlebobber then
-                            handlebobber:FireServer("instant_reel")
-                        end
-                    end
-                end
-            end
-        end
-    end)
+    end
 end
 
 -- Main auto reel loop with maximum responsiveness
@@ -337,7 +293,7 @@ local function startAutoReel()
     -- 1. RenderStepped - Highest priority (60+ FPS)
     renderSteppedConnection = RunService.RenderStepped:Connect(function()
         if isRunning then
-            instantReel() -- Check for reel with highest priority
+            checkForActiveGUIs() -- Check for reel/shake GUIs with highest priority
         end
     end)
     
@@ -345,7 +301,7 @@ local function startAutoReel()
     heartbeatConnection = RunService.Heartbeat:Connect(function()
         if isRunning then
             blockAnimations() -- Block animations
-            instantReel() -- Double check for reel
+            checkForActiveGUIs() -- Double check for GUIs
             instantCast() -- Speed up casting
             fastBobber() -- Accelerate bobber
         end
@@ -354,7 +310,7 @@ local function startAutoReel()
     -- 3. Stepped - Physics step (~60 FPS)
     steppedConnection = RunService.Stepped:Connect(function()
         if isRunning then
-            instantReel() -- Triple check for reel
+            checkForActiveGUIs() -- Triple check for GUIs
             fastBobber() -- Keep accelerating bobber
         end
     end)
@@ -393,7 +349,7 @@ local function stopAutoReel()
         for _, connection in pairs(getconnections(RunService.Heartbeat)) do
             if connection.Function then
                 local funcStr = tostring(connection.Function)
-                if string.find(funcStr:lower(), "instantreel") or 
+                if string.find(funcStr:lower(), "checkforactiveguis") or 
                    string.find(funcStr:lower(), "fastbobber") or
                    string.find(funcStr:lower(), "blockanimations") then
                     connection:Disconnect()
@@ -406,7 +362,7 @@ local function stopAutoReel()
         for _, connection in pairs(getconnections(RunService.RenderStepped)) do
             if connection.Function then
                 local funcStr = tostring(connection.Function)
-                if string.find(funcStr:lower(), "instantreel") or 
+                if string.find(funcStr:lower(), "checkforactiveguis") or 
                    string.find(funcStr:lower(), "fastbobber") then
                     connection:Disconnect()
                     print("🔌 Force disconnected suspicious RenderStepped")
@@ -418,7 +374,7 @@ local function stopAutoReel()
         for _, connection in pairs(getconnections(RunService.Stepped)) do
             if connection.Function then
                 local funcStr = tostring(connection.Function)
-                if string.find(funcStr:lower(), "instantreel") or 
+                if string.find(funcStr:lower(), "checkforactiveguis") or 
                    string.find(funcStr:lower(), "fastbobber") then
                     connection:Disconnect()
                     print("🔌 Force disconnected suspicious Stepped")
@@ -436,8 +392,10 @@ local function stopAutoReel()
         for _, connection in pairs(getconnections(PlayerGui.ChildAdded)) do
             if connection.Function then
                 local funcStr = tostring(connection.Function)
-                if string.find(funcStr:lower(), "fishinggui") or
-                   string.find(funcStr:lower(), "instantreel") then
+                if string.find(funcStr:lower(), "shakeui") or
+                   string.find(funcStr:lower(), "reel") or
+                   string.find(funcStr:lower(), "handleautoshake") or
+                   string.find(funcStr:lower(), "handleinstantreel") then
                     connection:Disconnect()
                     print("🔌 Force disconnected GUI listener")
                 end
