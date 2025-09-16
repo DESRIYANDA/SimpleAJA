@@ -157,7 +157,7 @@ mainSection:NewToggle("Always Catch", "Never lose a fish when reeling", function
     flags.alwayscatch = state
 end)
 
-mainSection:NewToggle("Always Catch v2", "Alternative always catch (only true arg)", function(state)
+mainSection:NewToggle("Always Catch v2", "Smart auto-complete minigame with natural timing", function(state)
     flags.alwayscatchv2 = state
 end)
 
@@ -271,6 +271,30 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
+    
+    -- Always Catch v2 - Advanced Minigame Automation
+    if flags.alwayscatchv2 then
+        local reelGui = FindChild(lp.PlayerGui, 'reel')
+        if reelGui and reelGui.Enabled then
+            -- Auto-complete minigame with natural timing
+            task.spawn(function()
+                local startTime = tick()
+                local minigameDuration = math.random(200, 400) / 100 -- 2-4 seconds
+                local completionRate = math.random(65, 88) -- Natural success rate
+                
+                -- Wait for minigame duration to look natural
+                task.wait(minigameDuration)
+                
+                -- Complete minigame if still active
+                if reelGui and reelGui.Enabled then
+                    -- Force completion with natural success rate
+                    ReplicatedStorage.events.reelfinished:FireServer(completionRate, true)
+                    -- Hide minigame UI
+                    reelGui.Enabled = false
+                end
+            end)
+        end
+    end
 end)
 
 --// Hooks for Perfect Cast and Always Catch
@@ -287,14 +311,13 @@ if CheckFunc(hookmetamethod) then
             args[1] = 100
             args[2] = true
             return old(self, unpack(args))
-        -- Always Catch v2 Hook (improved version)
+        -- Always Catch v2 Hook (loading bar bypass)
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatchv2 then
-            -- Keep original success rate but force caught = true
-            -- Also ensure minimum 50% success rate to avoid total failures
-            if args[1] and args[1] < 50 then
-                args[1] = math.random(50, 85) -- Random success rate between 50-85%
-            end
-            args[2] = true -- Force caught = true
+            -- Simulate normal minigame completion without perfect catch
+            -- Use random success rate that looks natural (60-90%)
+            local naturalRate = math.random(60, 90)
+            args[1] = naturalRate -- Natural success rate (not 100%)
+            args[2] = true -- Force caught = true (bypass loading bar requirement)
             return old(self, unpack(args))
         -- Super Instant Reel Hook
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.superinstantreel then
