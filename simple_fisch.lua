@@ -88,15 +88,113 @@ mainSection:NewToggle("Super Instant Reel", "Skip reel animation and instantly c
 end)
 
 --// Main Logic Loops
+local lastShakeTime = 0
+local shakeDebounce = false
+
+-- Enhanced Auto Shake Event Listener (Faster Response)
+local function setupShakeListener()
+    if flags.autoshake then
+        local playerGui = lp.PlayerGui
+        
+        -- Monitor for shake UI appearance
+        local function onShakeUIAdded()
+            if FindChild(playerGui, 'shakeui') then
+                local shakeUI = playerGui.shakeui
+                if FindChild(shakeUI, 'safezone') and FindChild(shakeUI.safezone, 'button') then
+                    local shakeButton = shakeUI.safezone.button
+                    
+                    -- Instant response when shake UI appears
+                    task.spawn(function()
+                        -- Wait for button to be fully loaded
+                        task.wait(0.01)
+                        
+                        -- Triple activation for maximum speed and reliability
+                        for attempt = 1, 5 do
+                            pcall(function()
+                                -- Method 1: Virtual Key Press
+                                GuiService.SelectedObject = shakeButton
+                                game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                                game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                                
+                                -- Method 2: Direct Fire
+                                shakeButton.Activated:Fire()
+                                
+                                -- Method 3: Mouse Click Simulation
+                                local VirtualInputManager = game:GetService('VirtualInputManager')
+                                local buttonPos = shakeButton.AbsolutePosition + shakeButton.AbsoluteSize/2
+                                VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, true, game, 1)
+                                VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, false, game, 1)
+                            end)
+                            task.wait(0.01) -- Very small delay between attempts
+                        end
+                    end)
+                end
+            end
+        end
+        
+        -- Connect to PlayerGui changes for instant detection
+        playerGui.ChildAdded:Connect(function(child)
+            if child.Name == "shakeui" and flags.autoshake then
+                onShakeUIAdded()
+            end
+        end)
+        
+        -- Also check existing shake UI
+        if FindChild(playerGui, 'shakeui') then
+            onShakeUIAdded()
+        end
+    end
+end
+
+-- Setup the enhanced shake listener
+task.spawn(setupShakeListener)
+
 RunService.Heartbeat:Connect(function()
-    -- Auto Shake
+    -- Backup Auto Shake (In case event listener misses)
     if flags.autoshake then
         if FindChild(lp.PlayerGui, 'shakeui') and FindChild(lp.PlayerGui['shakeui'], 'safezone') and FindChild(lp.PlayerGui['shakeui']['safezone'], 'button') then
-            GuiService.SelectedObject = lp.PlayerGui['shakeui']['safezone']['button']
-            if GuiService.SelectedObject == lp.PlayerGui['shakeui']['safezone']['button'] then
-                game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+            local shakeButton = lp.PlayerGui['shakeui']['safezone']['button']
+            local currentTime = tick()
+            
+            -- Prevent spam but allow rapid response
+            if not shakeDebounce or (currentTime - lastShakeTime) > 0.05 then
+                shakeDebounce = true
+                lastShakeTime = currentTime
+                
+                -- Multiple rapid fire methods for faster response
+                task.spawn(function()
+                    -- Method 1: GuiService selection + VirtualInput (fastest)
+                    GuiService.SelectedObject = shakeButton
+                    if GuiService.SelectedObject == shakeButton then
+                        game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                        game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                    end
+                    
+                    -- Method 2: Direct button activation
+                    pcall(function()
+                        for i = 1, 3 do -- Multiple attempts for reliability
+                            shakeButton.Activated:Fire()
+                            task.wait()
+                        end
+                    end)
+                    
+                    -- Method 3: Mouse simulation
+                    pcall(function()
+                        local VirtualInputManager = game:GetService('VirtualInputManager')
+                        local camera = workspace.CurrentCamera
+                        local buttonPos = shakeButton.AbsolutePosition + shakeButton.AbsoluteSize/2
+                        
+                        VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, true, game, 1)
+                        VirtualInputManager:SendMouseButtonEvent(buttonPos.X, buttonPos.Y, 0, false, game, 1)
+                    end)
+                    
+                    -- Reset debounce after short delay
+                    task.wait(0.1)
+                    shakeDebounce = false
+                end)
             end
+        else
+            shakeDebounce = false
         end
     end
     
