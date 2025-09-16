@@ -46,7 +46,7 @@ end
 --// Load Kavo UI Library from GitHub
 local Kavo
 local success, result = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/DESRIYANDA/SimpleAJA/main/kavo.lua"))()
 end)
 
 if success then
