@@ -48,19 +48,25 @@ local function checkReelGUI()
     end
 end
 
--- Monitor rod status
-RunService.Heartbeat:Connect(function()
+-- Monitor rod status (optimized - only check when needed)
+local lastLureCheck = 0
+local function checkRodStatus()
+    local currentTime = tick()
+    if currentTime - lastLureCheck < 0.5 then return end -- Only check every 0.5 seconds
+    lastLureCheck = currentTime
+    
     local rod = FindRod()
-    if rod then
-        if rod:FindFirstChild('values') and rod.values:FindFirstChild('lure') then
-            local lureValue = rod.values.lure.Value
-            if lureValue == 100 then
-                debugPrint("FISH BITE DETECTED! Lure value: " .. lureValue)
-                checkReelGUI()
-            end
+    if rod and rod:FindFirstChild('values') and rod.values:FindFirstChild('lure') then
+        local lureValue = rod.values.lure.Value
+        if lureValue == 100 then
+            debugPrint("FISH BITE DETECTED! Lure value: " .. lureValue)
+            checkReelGUI()
         end
     end
-end)
+end
+
+-- Use lighter connection instead of Heartbeat
+local rodCheckConnection = RunService.Stepped:Connect(checkRodStatus)
 
 -- Monitor reel GUI appearance
 lp.PlayerGui.ChildAdded:Connect(function(gui)
@@ -105,3 +111,12 @@ end
 
 setupHook()
 debugPrint("Debug tool ready! Start fishing to see diagnostics...")
+debugPrint("Type 'stopDebug()' in console to stop if lag occurs")
+
+-- Function to stop debug tool
+function stopDebug()
+    if rodCheckConnection then
+        rodCheckConnection:Disconnect()
+        debugPrint("Debug tool stopped - rod monitoring disabled")
+    end
+end
