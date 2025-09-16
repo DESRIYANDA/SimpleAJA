@@ -172,6 +172,10 @@ mainSection:NewToggle("Always Catch", "Never lose a fish when reeling", function
     flags.alwayscatch = state
 end)
 
+mainSection:NewToggle("Always Catch v2", "Alternative always catch (only true arg)", function(state)
+    flags.alwayscatchv2 = state
+end)
+
 mainSection:NewToggle("Super Instant Reel", "Skip reel animation and instantly catch fish", function(state)
     flags.superinstantreel = state
 end)
@@ -296,6 +300,10 @@ if CheckFunc(hookmetamethod) then
         -- Always Catch Hook
         elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatch then
             args[1] = 100
+            args[2] = true
+            return old(self, unpack(args))
+        -- Always Catch v2 Hook (only true argument)
+        elseif method == 'FireServer' and self.Name == 'reelfinished' and flags.alwayscatchv2 then
             args[2] = true
             return old(self, unpack(args))
         -- Super Instant Reel Hook
