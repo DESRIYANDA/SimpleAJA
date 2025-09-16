@@ -272,26 +272,30 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
-    -- Always Catch v2 - Advanced Minigame Automation
+    -- Always Catch v2 - Advanced Minigame Automation (Fixed for disabled GUI)
     if flags.alwayscatchv2 then
         local reelGui = FindChild(lp.PlayerGui, 'reel')
-        if reelGui and reelGui.Enabled then
-            -- Auto-complete minigame with natural timing
+        local rod = FindRod()
+        
+        -- Method 1: GUI-based detection (works even if GUI disabled)
+        if reelGui then 
             task.spawn(function()
-                local startTime = tick()
                 local minigameDuration = math.random(200, 400) / 100 -- 2-4 seconds
                 local completionRate = math.random(65, 88) -- Natural success rate
                 
-                -- Wait for minigame duration to look natural
                 task.wait(minigameDuration)
                 
-                -- Complete minigame if still active
-                if reelGui and reelGui.Enabled then
-                    -- Force completion with natural success rate
+                if reelGui and reelGui.Parent then
                     ReplicatedStorage.events.reelfinished:FireServer(completionRate, true)
-                    -- Hide minigame UI
-                    reelGui.Enabled = false
+                    pcall(function() reelGui.Enabled = false end)
                 end
+            end)
+        -- Method 2: Rod-based detection as backup
+        elseif rod and rod:FindFirstChild('values') and rod.values:FindFirstChild('lure') and rod.values.lure.Value == 100 then
+            task.spawn(function()
+                task.wait(math.random(200, 400) / 100) -- Natural delay
+                local completionRate = math.random(65, 88)
+                ReplicatedStorage.events.reelfinished:FireServer(completionRate, true)
             end)
         end
     end
